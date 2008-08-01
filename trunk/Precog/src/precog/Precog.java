@@ -5,16 +5,7 @@
 package precog;
 
 import java.util.HashMap;
-import poker.engine.Action;
-import poker.engine.GameInfo;
-import poker.engine.GameState;
-import poker.engine.Hand;
-import poker.engine.Player;
-import poker.engine.Call;
-import poker.engine.Check;
-import poker.engine.Raise;
-import poker.engine.Fold;
-import poker.engine.Money;
+import poker.engine.*;
 /**
  *
  * @author kevinl
@@ -23,6 +14,14 @@ public class Precog extends Player
 {
     private Hand myHand;
     private static HashMap<Long, Integer> bitPosition = new HashMap<Long, Integer>();
+    
+    private static Hand twoPair = new Hand(
+            ((Card.TWO_MASK & Card.SPADES_MASK) |
+             (Card.TWO_MASK & Card.CLUBS_MASK) |
+             (Card.THREE_MASK & Card.HEARTS_MASK) |
+             (Card.THREE_MASK & Card.SPADES_MASK) |
+             (Card.FOUR_MASK & Card.SPADES_MASK)), 5,5
+            );
     
     public Precog(String _name)
     {
@@ -55,18 +54,18 @@ public class Precog extends Player
         }
         else
         {
-            int rating = rate(Hand.getHighestHand(myHand, gi.getBoard()));
-            if (rating > 4000)
+            //int rating = rate(Hand.getHighestHand(myHand, gi.getBoard()));
+            if (twoPair.compareTo(myHand) < 0)//(rating > 4000)
             {
                 if (gi.getBet(this).getAmount() < 5)
                 {
-                    return new Raise(gi.getId(this), new Money(4.0, Money.Currency.DOLLARS));
+                    return new Raise(gi.getId(this), new Money(10.0, Money.Currency.DOLLARS));
                 }
-                else if (gi.getMinimumCallAmount().getAmount() < 5.)
+                else //if (gi.getMinimumCallAmount().getAmount() < 5.)
                 {
                     return new Call(gi.getId(this));
                 }
-                else return new Fold(gi.getId(this));
+                //else return new Fold(gi.getId(this));
             }
             else return new Fold(gi.getId(this));
         }
@@ -100,29 +99,28 @@ public class Precog extends Player
         int slh = suitlessHand(h.getBitCards());
         if (Hand.hasFlush(h))
         {
-            //convert to value only, no suit
-            //shift. ace left, 2 right
-            return PrecogTables.flushes[slh]; //5 unique, garunteed to be in scope
+            return 0;
+            //return PrecogTables.flushes[slh]; //5 unique, garunteed to be in scope
         }
-        if (PrecogTables.unique5[slh] != 0)
+        //if (PrecogTables.unique5[slh] != 0)
         { //5 unique card values (got example: ace, king, six)
-            return PrecogTables.unique5[slh];
+            //return PrecogTables.unique5[slh];
         }
-        int idx = binarySearch(multBits(h), 0, PrecogTables.products.length-1);
-        return PrecogTables.values[idx];
+        //int idx = binarySearch(multBits(h), 0, PrecogTables.products.length-1);
+        return 0;//PrecogTables.values[idx];
     }
     
     //returns an index to look at for hand rank
-    private static int binarySearch(int target, int left, int right)
-    {
-        int mid = (left+right)/2;
-        if (PrecogTables.products[mid] == target)
-            return mid;
-        if (PrecogTables.products[mid] > target)
-            return binarySearch(target, left, mid);
-        else
-            return binarySearch(target, mid, right);
-    }
+   // private static int binarySearch(int target, int left, int right)
+    //{
+        //int mid = (left+right)/2;
+        //if (PrecogTables.products[mid] == target)
+            //return mid;
+        //if (PrecogTables.products[mid] > target)
+            //return binarySearch(target, left, mid);
+        //else
+            //return binarySearch(target, mid, right);
+    //}
     
     /**
      * converts a long in which 52 bits are used to an int in which 13 bits are used.
@@ -138,8 +136,10 @@ public class Precog extends Player
         int i = 0;
         while (h != 0L)
         {
-            if ((h & 0xFL) != 0) //if right most 4 bits have a 1 set            
-                slh ^= (1 << i);            
+            if ((h & 0xFL) != 0) //if right most 4 bits have a 1 set
+            {
+                slh ^= (1 << i);
+            }
             i++;
             h >>>= 4;
         }
@@ -181,4 +181,9 @@ public class Precog extends Player
         37,37,37,37,
         41,41,41,41
     };
+    
+
+
+    
+
 }
