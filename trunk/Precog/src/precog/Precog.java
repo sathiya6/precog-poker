@@ -55,9 +55,9 @@ public class Precog extends Player
         {
             bitPosition.put(1L<<i, i);
         }
-        System.out.println(System.getProperty("user.dir"));
+        //System.out.println(System.getProperty("user.dir"));
         
-        BufferedReader f = new BufferedReader(new FileReader("\\flushes.pct"));
+        BufferedReader f = new BufferedReader(new FileReader("../../Documents/precog-poker/Precog/src/precog/flushes.pct"));
         String curLine;
         int index = 0;
         while ((curLine = f.readLine()) != null)
@@ -69,7 +69,7 @@ public class Precog extends Player
             }
         }
         
-        f = new BufferedReader(new FileReader("\\unique5.pct"));
+        f = new BufferedReader(new FileReader("../../Documents/precog-poker/Precog/src/precog/unique5.pct"));
         index = 0;
         while ((curLine = f.readLine()) != null)
         {
@@ -80,7 +80,7 @@ public class Precog extends Player
             }
         }
         
-        f = new BufferedReader(new FileReader("\\products.pct"));
+        f = new BufferedReader(new FileReader("../../Documents/precog-poker/Precog/src/precog/products.pct"));
         index = 0;
         while ((curLine = f.readLine()) != null)
         {
@@ -91,7 +91,7 @@ public class Precog extends Player
             }
         }
         
-        f = new BufferedReader(new FileReader("\\values.pct"));
+        f = new BufferedReader(new FileReader("../../Documents/precog-poker/Precog/src/precog/values.pct"));
         index = 0;
         while ((curLine = f.readLine()) != null)
         {
