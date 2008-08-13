@@ -8,6 +8,8 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.StringTokenizer;
 import poker.engine.*;
@@ -56,8 +58,9 @@ public class Precog extends Player
             bitPosition.put(1L<<i, i);
         }
         //System.out.println(System.getProperty("user.dir"));
-        
-        BufferedReader f = new BufferedReader(new FileReader("../../Documents/precog-poker/Precog/src/precog/flushes.pct"));
+        InputStream is = this.getClass().getResourceAsStream("flushes.pct");
+        InputStreamReader isr = new InputStreamReader(is);
+        BufferedReader f = new BufferedReader(isr);
         String curLine;
         int index = 0;
         while ((curLine = f.readLine()) != null)
@@ -69,7 +72,9 @@ public class Precog extends Player
             }
         }
         
-        f = new BufferedReader(new FileReader("../../Documents/precog-poker/Precog/src/precog/unique5.pct"));
+        is = this.getClass().getResourceAsStream("unique5.pct");
+        isr = new InputStreamReader(is);
+        f = new BufferedReader(isr);
         index = 0;
         while ((curLine = f.readLine()) != null)
         {
@@ -80,7 +85,9 @@ public class Precog extends Player
             }
         }
         
-        f = new BufferedReader(new FileReader("../../Documents/precog-poker/Precog/src/precog/products.pct"));
+        is = this.getClass().getResourceAsStream("products.pct");
+        isr = new InputStreamReader(is);
+        f = new BufferedReader(isr);
         index = 0;
         while ((curLine = f.readLine()) != null)
         {
@@ -91,7 +98,9 @@ public class Precog extends Player
             }
         }
         
-        f = new BufferedReader(new FileReader("../../Documents/precog-poker/Precog/src/precog/values.pct"));
+        is = this.getClass().getResourceAsStream("values.pct");
+        isr = new InputStreamReader(is);
+        f = new BufferedReader(isr);
         index = 0;
         while ((curLine = f.readLine()) != null)
         {
