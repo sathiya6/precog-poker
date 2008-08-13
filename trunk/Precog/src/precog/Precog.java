@@ -2,7 +2,7 @@
  * author: Kevin Liu (kevin91liu@gmail.com)
  */
 
-package precog;
+package poker.players;
 
 import java.util.HashMap;
 import poker.engine.*;
@@ -55,7 +55,7 @@ public class Precog extends Player
         else
         {
             //int rating = rate(Hand.getHighestHand(myHand, gi.getBoard()));
-            if (twoPair.compareTo(myHand) < 0)//(rating > 4000)
+            if (this.twoPair.compareTo(myHand) < 0)//(rating > 4000)
             {
                 if (gi.getBet(this).getAmount() < 5)
                 {
