@@ -37,7 +37,9 @@ public class Precog extends Player
         super(_name);
         try
         {
+            long milles = System.currentTimeMillis();
             initiate();
+            System.out.println(System.currentTimeMillis() - milles);
         }
         catch (FileNotFoundException e)
         {
@@ -51,16 +53,21 @@ public class Precog extends Player
             System.exit(-1);
         }
     }    
+    
+    private BufferedReader getBR(String filename)
+    {
+        InputStream is = this.getClass().getResourceAsStream(filename);
+        InputStreamReader isr = new InputStreamReader(is);
+        return new BufferedReader(isr);
+    }
+    
     private void initiate() throws FileNotFoundException, IOException
     {
         for (int i = 0; i < 52; i++)
         {
             bitPosition.put(1L<<i, i);
         }
-        //System.out.println(System.getProperty("user.dir"));
-        InputStream is = this.getClass().getResourceAsStream("flushes.pct");
-        InputStreamReader isr = new InputStreamReader(is);
-        BufferedReader f = new BufferedReader(isr);
+        BufferedReader f = getBR("flushes.pct");
         String curLine;
         int index = 0;
         while ((curLine = f.readLine()) != null)
@@ -72,9 +79,7 @@ public class Precog extends Player
             }
         }
         
-        is = this.getClass().getResourceAsStream("unique5.pct");
-        isr = new InputStreamReader(is);
-        f = new BufferedReader(isr);
+        f = getBR("unique5.pct");
         index = 0;
         while ((curLine = f.readLine()) != null)
         {
@@ -85,9 +90,7 @@ public class Precog extends Player
             }
         }
         
-        is = this.getClass().getResourceAsStream("products.pct");
-        isr = new InputStreamReader(is);
-        f = new BufferedReader(isr);
+        f = getBR("products.pct");
         index = 0;
         while ((curLine = f.readLine()) != null)
         {
@@ -98,9 +101,7 @@ public class Precog extends Player
             }
         }
         
-        is = this.getClass().getResourceAsStream("values.pct");
-        isr = new InputStreamReader(is);
-        f = new BufferedReader(isr);
+        f = getBR("values.pct");
         index = 0;
         while ((curLine = f.readLine()) != null)
         {
