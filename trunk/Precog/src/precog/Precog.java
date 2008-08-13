@@ -6,7 +6,6 @@ package precog;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -36,10 +35,8 @@ public class Precog extends Player
     {
         super(_name);
         try
-        {
-            long milles = System.currentTimeMillis();
-            initiate();
-            System.out.println(System.currentTimeMillis() - milles);
+        {            
+            initiate();            
         }
         catch (FileNotFoundException e)
         {
@@ -61,57 +58,41 @@ public class Precog extends Player
         return new BufferedReader(isr);
     }
     
-    private void initiate() throws FileNotFoundException, IOException
+    private void populateArrayFromPCT(String filename, short[] array) throws IOException
     {
-        for (int i = 0; i < 52; i++)
-        {
-            bitPosition.put(1L<<i, i);
-        }
-        BufferedReader f = getBR("flushes.pct");
+        BufferedReader f = getBR(filename);
         String curLine;
         int index = 0;
         while ((curLine = f.readLine()) != null)
         {
             StringTokenizer st = new StringTokenizer(curLine);
-            while (st.hasMoreTokens())
-            {
-                flushes[index++] = Short.parseShort(st.nextToken());
-            }
+            while (st.hasMoreTokens())            
+                array[index++] = Short.parseShort(st.nextToken());            
         }
-        
-        f = getBR("unique5.pct");
-        index = 0;
+    }
+    
+    private void populateArrayFromPCT(String filename, int[] array) throws IOException
+    {
+        BufferedReader f = getBR(filename);
+        String curLine;
+        int index = 0;
         while ((curLine = f.readLine()) != null)
         {
             StringTokenizer st = new StringTokenizer(curLine);
-            while (st.hasMoreTokens())
-            {
-                unique5[index++] = Short.parseShort(st.nextToken());
-            }
+            while (st.hasMoreTokens())            
+                array[index++] = Integer.parseInt(st.nextToken());            
         }
+    }
+    
+    private void initiate() throws FileNotFoundException, IOException
+    {
+        for (int i = 0; i < 52; i++)        
+            bitPosition.put(1L<<i, i);
         
-        f = getBR("products.pct");
-        index = 0;
-        while ((curLine = f.readLine()) != null)
-        {
-            StringTokenizer st = new StringTokenizer(curLine);
-            while (st.hasMoreTokens())
-            {
-                products[index++] = Integer.parseInt(st.nextToken());
-            }
-        }
-        
-        f = getBR("values.pct");
-        index = 0;
-        while ((curLine = f.readLine()) != null)
-        {
-            StringTokenizer st = new StringTokenizer(curLine);
-            while (st.hasMoreTokens())
-            {
-                values[index++] = Short.parseShort(st.nextToken());
-            }
-        }
-
+        populateArrayFromPCT("flushes.pct", flushes);
+        populateArrayFromPCT("unique5.pct", unique5);        
+        populateArrayFromPCT("products.pct", products); 
+        populateArrayFromPCT("values.pct", values);                 
     }
 
     public Action beginTurn(GameInfo gi)
