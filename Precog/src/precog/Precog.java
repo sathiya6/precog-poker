@@ -1,19 +1,26 @@
 /**
- * author: Kevin Liu (kevin91liu@gmail.com)
+ * @author: Kevin Liu (kevin91liu@gmail.com)
  */
 
-package poker.players;
+package precog;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.StringTokenizer;
 import poker.engine.*;
-/**
- *
- * @author kevinl
- */
+
 public class Precog extends Player
 {
     private Hand myHand;
     private static HashMap<Long, Integer> bitPosition = new HashMap<Long, Integer>();
+    
+    private static short[] flushes = new short[7937];
+    private static short[] unique5 = new short[7937];
+    private static int[] products = new int[4888];
+    private static short[] values = new short[4888];
     
     private static Hand twoPair = new Hand(
             ((Card.TWO_MASK & Card.SPADES_MASK) |
@@ -26,15 +33,75 @@ public class Precog extends Player
     public Precog(String _name)
     {
         super(_name);
-        initiate();
-    }
-    
-    private void initiate()
+        try
+        {
+            initiate();
+        }
+        catch (FileNotFoundException e)
+        {
+            e.printStackTrace();
+            System.err.println(".pct file(s) not found");
+            System.exit(-1);
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+            System.exit(-1);
+        }
+    }    
+    private void initiate() throws FileNotFoundException, IOException
     {
         for (int i = 0; i < 52; i++)
         {
             bitPosition.put(1L<<i, i);
         }
+        
+
+        BufferedReader f = new BufferedReader(new FileReader("flushes.pct"));
+        String curLine;
+        int index = 0;
+        while ((curLine = f.readLine()) != null)
+        {
+            StringTokenizer st = new StringTokenizer(curLine);
+            while (st.hasMoreTokens())
+            {
+                flushes[index++] = Short.parseShort(st.nextToken());
+            }
+        }
+        
+        f = new BufferedReader(new FileReader("unique5.pct"));
+        index = 0;
+        while ((curLine = f.readLine()) != null)
+        {
+            StringTokenizer st = new StringTokenizer(curLine);
+            while (st.hasMoreTokens())
+            {
+                unique5[index++] = Short.parseShort(st.nextToken());
+            }
+        }
+        
+        f = new BufferedReader(new FileReader("products.pct"));
+        index = 0;
+        while ((curLine = f.readLine()) != null)
+        {
+            StringTokenizer st = new StringTokenizer(curLine);
+            while (st.hasMoreTokens())
+            {
+                products[index++] = Integer.parseInt(st.nextToken());
+            }
+        }
+        
+        f = new BufferedReader(new FileReader("values.pct"));
+        index = 0;
+        while ((curLine = f.readLine()) != null)
+        {
+            StringTokenizer st = new StringTokenizer(curLine);
+            while (st.hasMoreTokens())
+            {
+                values[index++] = Short.parseShort(st.nextToken());
+            }
+        }
+
     }
 
     public Action beginTurn(GameInfo gi)
