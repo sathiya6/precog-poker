@@ -4,6 +4,8 @@
  */
 
 package precog;
+import poker.engine.*;
+import poker.players.*;
 
 /**
  *
@@ -13,7 +15,10 @@ public class PrecogMain
 {
     public static void main(String... args)
     {
-        Precog a = new Precog("a");
-        
+        Player a = new Precog("precog");
+        Player b = new Stupid("bush");
+        Player[] c = {a, b};
+        Game g = new Game(c);
+        g.begin();
     }
 }
