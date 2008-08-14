@@ -105,6 +105,7 @@ public class Precog extends Player
         else
         {
             Hand highHand = Hand.getHighestHand(myHand, gi.getBoard());
+            System.out.println("highHand size is : " + highHand.size());
             int rating = rate(highHand);
             System.out.println(highHand + " " + rating);
             if (rating > 4000)
@@ -209,6 +210,7 @@ public class Precog extends Player
     {
         int result = 1;
         long bits = h.getBitCards();
+        if (h.size() != 5) System.out.println("HOLY CRAP! " + h.size());
         while (bits != 0)
         {
             System.out.println("bitposition: " + bitPosition.get(bits & -bits));
