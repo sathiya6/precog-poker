@@ -21,7 +21,7 @@ public class Precog extends Player
     private static short[] flushes = new short[7937];
     private static short[] unique5 = new short[7937];
     private static int[] products = new int[4888];
-    private static short[] values = new short[4888];    
+    private static short[] values = new short[4888];
     
     public Precog(String _name)
     {
@@ -79,7 +79,7 @@ public class Precog extends Player
     private void initiate() throws FileNotFoundException, IOException
     {
         for (int i = 0; i < 52; i++)        
-            bitPosition.put(1L<<i, i);
+            bitPosition.put(1L<<i, i+1);
         
         populateArrayFromPCT("flushes.pct", flushes);
         populateArrayFromPCT("unique5.pct", unique5);        
@@ -104,8 +104,10 @@ public class Precog extends Player
         }
         else
         {
-            //int rating = rate(Hand.getHighestHand(myHand, gi.getBoard()));
-            //if (rating > 4000)
+            Hand highHand = Hand.getHighestHand(myHand, gi.getBoard());
+            int rating = rate(highHand);
+            System.out.println(highHand + " " + rating);
+            if (rating > 4000)
             {
                 if (gi.getBet(this).getAmount() < 5)
                 {
@@ -117,7 +119,7 @@ public class Precog extends Player
                 }
                 //else return new Fold(gi.getId(this));
             }
-            //else return new Fold(gi.getId(this));
+            else return new Fold(gi.getId(this));
         }
     }
 
@@ -149,28 +151,34 @@ public class Precog extends Player
         int slh = suitlessHand(h.getBitCards());
         if (Hand.hasFlush(h))
         {
-            return 0;
-            //return PrecogTables.flushes[slh]; //5 unique, garunteed to be in scope
+            System.out.println("rate returning: " + flushes[slh]);
+            return flushes[slh]; //5 unique, garunteed to be in scope
         }
-        //if (PrecogTables.unique5[slh] != 0)
+        if (unique5[slh] != 0)
         { //5 unique card values (got example: ace, king, six)
-            //return PrecogTables.unique5[slh];
+            System.out.println("rate returning u5: " + unique5[slh]);
+            return unique5[slh];
         }
-        //int idx = binarySearch(multBits(h), 0, PrecogTables.products.length-1);
-        return 0;//PrecogTables.values[idx];
+        int idx = binarySearch(multBits(h), 0, products.length-1);
+        System.out.println("rate ret: " + values[idx]);
+        return values[idx];
     }
     
     //returns an index to look at for hand rank
-   // private static int binarySearch(int target, int left, int right)
-    //{
-        //int mid = (left+right)/2;
-        //if (PrecogTables.products[mid] == target)
-            //return mid;
-        //if (PrecogTables.products[mid] > target)
-            //return binarySearch(target, left, mid);
-        //else
-            //return binarySearch(target, mid, right);
-    //}
+    private static int binarySearch(int target, int left, int right)
+    {
+        if (right < left)
+        {
+            return -1;
+        }
+        int mid = (left+right) >>> 1;
+        if (products[mid] == target)
+            return mid;
+        if (products[mid] > target)
+            return binarySearch(target, left, mid-1);
+        else
+            return binarySearch(target, mid+1, right);
+    }
     
     /**
      * converts a long in which 52 bits are used to an int in which 13 bits are used.
@@ -188,7 +196,7 @@ public class Precog extends Player
         {
             if ((h & 0xFL) != 0) //if right most 4 bits have a 1 set
             {
-                slh ^= (1 << i);
+                slh |= (1 << i);
             }
             i++;
             h >>>= 4;
@@ -203,9 +211,11 @@ public class Precog extends Player
         long bits = h.getBitCards();
         while (bits != 0)
         {
-            result *= bc_to_prime[bitPosition.get(bits & -bits)];
+            System.out.println("bitposition: " + bitPosition.get(bits & -bits));
+            result *= bc_to_prime[bitPosition.get(bits & -bits)]; //rightmost bit
             bits ^= bits & -bits;
         }
+        System.out.println("ASDF " + result);
         return result;
     }
 
