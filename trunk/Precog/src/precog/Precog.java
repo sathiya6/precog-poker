@@ -105,14 +105,24 @@ public class Precog extends Player
         else
         {
             Hand highHand = Hand.getHighestHand(myHand, gi.getBoard());
-            System.out.println("highHand size is : " + highHand.size());
             int rating = rate(highHand);
-            System.out.println(highHand + " " + rating);
-            if (rating > 4000)
+            System.out.println(highHand + " -rating: " + rating);
+            if (rating < 4000)
             {
                 if (gi.getBet(this).getAmount() < 5)
                 {
-                    return new Raise(gi.getId(this), new Money(10.0, Money.Currency.DOLLARS));
+                    double raise = (gi.getStash(this).getAmount() < 10.0)
+                            ? gi.getStash(this).getAmount() : 10.0;
+                    if (raise == 0.)
+                    {
+                        Action a = new Call(gi.getId(this));
+                        if (gi.isValid(a))
+                        {
+                            return a;
+                        }
+                        else return new Check(gi.getId(this));
+                    }
+                    return new Raise(gi.getId(this), new Money(raise, Money.Currency.DOLLARS));
                 }
                 else //if (gi.getMinimumCallAmount().getAmount() < 5.)
                 {
@@ -149,19 +159,19 @@ public class Precog extends Player
      */
     private int rate(Hand h)
     {
+        assert (h.size() == 5);
         int slh = suitlessHand(h.getBitCards());
         if (Hand.hasFlush(h))
         {
-            System.out.println("rate returning: " + flushes[slh]);
+            System.out.println("we have a flush!");
             return flushes[slh]; //5 unique, garunteed to be in scope
         }
         if (unique5[slh] != 0)
         { //5 unique card values (got example: ace, king, six)
-            System.out.println("rate returning u5: " + unique5[slh]);
+            System.out.println("unique 5!");
             return unique5[slh];
         }
         int idx = binarySearch(multBits(h), 0, products.length-1);
-        System.out.println("rate ret: " + values[idx]);
         return values[idx];
     }
     
@@ -189,7 +199,7 @@ public class Precog extends Player
      * if passed a 5 card hand, this returns a value between
      * 0x1F00 and 0x001F
      */
-    private static int suitlessHand(long h)
+    public static int suitlessHand(long h)
     {
         int slh = 0;
         int i = 0;
@@ -210,14 +220,12 @@ public class Precog extends Player
     {
         int result = 1;
         long bits = h.getBitCards();
-        if (h.size() != 5) System.out.println("HOLY CRAP! " + h.size());
+        assert h.size() == 5 : "multBits - h size is not 5!!!";
         while (bits != 0)
         {
-            System.out.println("bitposition: " + bitPosition.get(bits & -bits));
             result *= bc_to_prime[bitPosition.get(bits & -bits)]; //rightmost bit
             bits ^= bits & -bits;
         }
-        System.out.println("ASDF " + result);
         return result;
     }
 
