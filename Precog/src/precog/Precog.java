@@ -21,15 +21,7 @@ public class Precog extends Player
     private static short[] flushes = new short[7937];
     private static short[] unique5 = new short[7937];
     private static int[] products = new int[4888];
-    private static short[] values = new short[4888];
-    
-    private static Hand twoPair = new Hand(
-            ((Card.TWO_MASK & Card.SPADES_MASK) |
-             (Card.TWO_MASK & Card.CLUBS_MASK) |
-             (Card.THREE_MASK & Card.HEARTS_MASK) |
-             (Card.THREE_MASK & Card.SPADES_MASK) |
-             (Card.FOUR_MASK & Card.SPADES_MASK)), 5,5
-            );
+    private static short[] values = new short[4888];    
     
     public Precog(String _name)
     {
@@ -113,7 +105,7 @@ public class Precog extends Player
         else
         {
             //int rating = rate(Hand.getHighestHand(myHand, gi.getBoard()));
-            if (this.twoPair.compareTo(myHand) < 0)//(rating > 4000)
+            //if (rating > 4000)
             {
                 if (gi.getBet(this).getAmount() < 5)
                 {
@@ -125,7 +117,7 @@ public class Precog extends Player
                 }
                 //else return new Fold(gi.getId(this));
             }
-            else return new Fold(gi.getId(this));
+            //else return new Fold(gi.getId(this));
         }
     }
 
