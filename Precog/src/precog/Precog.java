@@ -23,6 +23,9 @@ public class Precog extends Player
     private static int[] products = new int[4888];
     private static short[] values = new short[4888];
     
+    private static short[] hash_values;
+    private static short[] hash_adjust;
+    
     public Precog(String _name)
     {
         super(_name);
@@ -80,7 +83,7 @@ public class Precog extends Player
     {
         for (int i = 0; i < 52; i++)        
             bitPosition.put(1L<<i, i+1);
-        
+        //TODO: hash_values and hash_adjust
         populateArrayFromPCT("flushes.pct", flushes);
         populateArrayFromPCT("unique5.pct", unique5);        
         populateArrayFromPCT("products.pct", products); 
@@ -174,6 +177,20 @@ public class Precog extends Player
         int idx = binarySearch(multBits(h), 0, products.length-1);
         return values[idx];
     }
+    
+    private int find_fast(int u)
+    {
+      int a, b, r;
+      u += 0xE91AAA35;
+      u ^= u >> 16;
+      u += u << 8;
+      u ^= u >> 4;
+      b  = (u >> 8) & 0x1ff;
+      a  = (u + (u << 2)) >> 19;
+      r  = a ^ hash_adjust[b];
+      return r;
+    }
+
     
     //returns an index to look at for hand rank
     private static int binarySearch(int target, int left, int right)
