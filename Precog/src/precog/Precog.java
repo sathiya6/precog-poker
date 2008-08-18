@@ -20,11 +20,11 @@ public class Precog extends Player
     
     private static short[] flushes = new short[7937];
     private static short[] unique5 = new short[7937];
-    private static int[] products = new int[4888];
-    private static short[] values = new short[4888];
+    //private static int[] products = new int[4888];
+    //private static short[] values = new short[4888];
     
-    private static short[] hash_values;
-    private static short[] hash_adjust;
+    private static short[] hash_values = new short[8192];
+    private static short[] hash_adjust = new short[512];
     
     public Precog(String _name)
     {
@@ -83,11 +83,12 @@ public class Precog extends Player
     {
         for (int i = 0; i < 52; i++)        
             bitPosition.put(1L<<i, i+1);
-        //TODO: hash_values and hash_adjust
         populateArrayFromPCT("flushes.pct", flushes);
         populateArrayFromPCT("unique5.pct", unique5);        
-        populateArrayFromPCT("products.pct", products); 
-        populateArrayFromPCT("values.pct", values);                 
+        //populateArrayFromPCT("products.pct", products); 
+        //populateArrayFromPCT("values.pct", values);
+        populateArrayFromPCT("hash_values.pct", hash_values);
+        populateArrayFromPCT("hash_adjust.pct", hash_adjust);
     }
 
     public Action beginTurn(GameInfo gi)
@@ -174,11 +175,11 @@ public class Precog extends Player
             System.out.println("unique 5!");
             return unique5[slh];
         }
-        int idx = binarySearch(multBits(h), 0, products.length-1);
-        return values[idx];
+        //int idx = binarySearch(multBits(h), 0, products.length-1);
+        return hash_values[perfect_hash(multBits(h))];
     }
     
-    private int find_fast(int u)
+    private int perfect_hash(int u)
     {
       int a, b, r;
       u += 0xE91AAA35;
@@ -192,8 +193,10 @@ public class Precog extends Player
     }
 
     
-    //returns an index to look at for hand rank
-    private static int binarySearch(int target, int left, int right)
+    /*returns an index to look at for hand rank
+     * deprecated since we use perfect hash function instead
+     */
+    /*private static int binarySearch(int target, int left, int right)
     {
         if (right < left)
         {
@@ -206,7 +209,7 @@ public class Precog extends Player
             return binarySearch(target, left, mid-1);
         else
             return binarySearch(target, mid+1, right);
-    }
+    }*/
     
     /**
      * converts a long in which 52 bits are used to an int in which 13 bits are used.
