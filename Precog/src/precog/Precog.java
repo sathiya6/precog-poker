@@ -110,7 +110,7 @@ public class Precog extends Player
         {
             Hand highHand = Hand.getHighestHand(myHand, gi.getBoard());
             int rating = rate(highHand);
-            System.out.println(highHand + " -rating: " + rating);
+            System.out.println("precog beginTurn(): " + highHand + " -rating: " + rating);
             if (rating < 4000)
             {
                 if (gi.getBet(this).getAmount() < 5)
@@ -183,11 +183,11 @@ public class Precog extends Player
     {
       int a, b, r;
       u += 0xE91AAA35;
-      u ^= u >> 16;
+      u ^= u >>> 16;
       u += u << 8;
-      u ^= u >> 4;
-      b  = (u >> 8) & 0x1ff;
-      a  = (u + (u << 2)) >> 19;
+      u ^= u >>> 4;
+      b  = (u >>> 8) & 0x1FF;
+      a  = (u + (u << 2)) >>> 19;
       r  = a ^ hash_adjust[b];
       return r;
     }
