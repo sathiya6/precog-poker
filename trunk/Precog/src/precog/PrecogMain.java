@@ -16,7 +16,7 @@ public class PrecogMain
     public static void main(String... args)
     {
         Player a = new Precog("precog");
-        Player b = new Stupid("bush");
+        Player b = new ConsoleHuman("Shawn");
         Player[] c = {a, b};
         Game g = new Game(c);
         g.begin();

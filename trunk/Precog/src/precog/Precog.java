@@ -81,12 +81,12 @@ public class Precog extends Player
     
     private void initiate() throws FileNotFoundException, IOException
     {
-        for (int i = 0; i < 52; i++)        
-            bitPosition.put(1L<<i, i+1);
-        populateArrayFromPCT("flushes.pct", flushes);
+        for (int i = 0; i < 52; i++)                             
+            bitPosition.put(1L<<i, i+1);                     
+        populateArrayFromPCT("flushes.pct", flushes);         
         populateArrayFromPCT("unique5.pct", unique5);        
-        //populateArrayFromPCT("products.pct", products); 
-        //populateArrayFromPCT("values.pct", values);
+        //populateArrayFromPCT("products.pct", products);    
+        //populateArrayFromPCT("values.pct", values);        
         populateArrayFromPCT("hash_values.pct", hash_values);
         populateArrayFromPCT("hash_adjust.pct", hash_adjust);
     }
@@ -110,7 +110,7 @@ public class Precog extends Player
         {
             Hand highHand = Hand.getHighestHand(myHand, gi.getBoard());
             int rating = rate(highHand);
-            System.out.println("precog beginTurn(): " + highHand + " -rating: " + rating);
+            //System.out.println("precog beginTurn(): " + highHand + " -rating: " + rating);
             if (rating < 4000)
             {
                 if (gi.getBet(this).getAmount() < 5)
@@ -178,7 +178,8 @@ public class Precog extends Player
         //int idx = binarySearch(multBits(h), 0, products.length-1);
         return hash_values[perfect_hash(multBits(h))];
     }
-    
+        
+    // amazing...
     private int perfect_hash(int u)
     {
       int a, b, r;
@@ -241,10 +242,11 @@ public class Precog extends Player
         int result = 1;
         long bits = h.getBitCards();
         assert h.size() == 5 : "multBits - h size is not 5!!!";
+        long bit;
         while (bits != 0)
         {
-            result *= bc_to_prime[bitPosition.get(bits & -bits)]; //rightmost bit
-            bits ^= bits & -bits;
+            result *= bc_to_prime[bitPosition.get(bit = (bits & -bits))]; //rightmost bit
+            bits ^= bit;
         }
         return result;
     }
