@@ -22,9 +22,18 @@ public class Precog extends Player
     private static short[] unique5 = new short[7937];
     //private static int[] products = new int[4888];
     //private static short[] values = new short[4888];
-    
     private static short[] hash_values = new short[8192];
     private static short[] hash_adjust = new short[512];
+    
+    //distinct -> unique multiplying factor
+    private static final int MFACTOR_STRAIGHT_FLUSH = 4;
+    private static final int MFACTOR_FOUR_OF_A_KIND = 4;
+    private static final int MFACTOR_FULL_HOUSE = 24;
+    private static final int MFACTOR_FLUSH = 4;
+    private static final int MFACTOR_STRAIGHT = 1020;
+    private static final int MFACTOR_THREE_OF_A_KIND = 64;
+    private static final int MFACTOR_TWO_PAIR = 144;
+    private static final int MFACTOR_PAIR = 1020;
     
     public Precog(String _name)
     {
