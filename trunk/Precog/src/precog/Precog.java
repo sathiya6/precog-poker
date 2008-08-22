@@ -9,14 +9,28 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.HashMap;
 import java.util.StringTokenizer;
 import poker.engine.*;
 
 public class Precog extends Player
 {
     private Hand myHand;
-    private static HashMap<Long, Integer> bitPosition = new HashMap<Long, Integer>();
+    
+    /**
+     *  Perfect Hashtable for bitposition. This table returns the position of the bit set.
+     *  Usage: bitpos64[(int)((bit*0x07EDD5E59A4E28C2L)>>>58)];
+     */
+    private static int[] bitpos64 =
+    {
+	63,  0, 58,  1, 59, 47, 53,  2,
+	60, 39, 48, 27, 54, 33, 42,  3,
+	61, 51, 37, 40, 49, 18, 28, 20,
+	55, 30, 34, 11, 43, 14, 22,  4,
+	62, 57, 46, 52, 38, 26, 32, 41,
+	50, 36, 17, 19, 29, 10, 13, 21,
+	56, 45, 25, 31, 35, 16,  9, 12,
+	44, 24, 15,  8, 23,  7,  6,  5
+    };
     
     private static short[] flushes = new short[7937];
     private static short[] unique5 = new short[7937];
@@ -89,9 +103,7 @@ public class Precog extends Player
     }
     
     private void initiate() throws FileNotFoundException, IOException
-    {
-        for (int i = 0; i < 52; i++)                             
-            bitPosition.put(1L<<i, i+1);                     
+    {                            
         populateArrayFromPCT("flushes.pct", flushes);         
         populateArrayFromPCT("unique5.pct", unique5);        
         //populateArrayFromPCT("products.pct", products);    
@@ -164,8 +176,21 @@ public class Precog extends Player
     
     
     
-    //7462 distinct poker hands
+    
     /**
+     * There are 7462 distinct poker hands, in these categories (not in order of rank):
+     * 
+     * Straight Flush (includes Royal Flush)
+     * Flush
+     * 
+     * Straight
+     * High Card
+     * 
+     * Full House
+     * Four of a Kind
+     * Three of a Kind
+     * Two Pair
+     * One Pair
      * 
      * @param h the hand to rate. for now, 5 card hand
      * @return rating.
@@ -173,23 +198,24 @@ public class Precog extends Player
     private int rate(Hand h)
     {
         assert (h.size() == 5);
+        
         int slh = suitlessHand(h.getBitCards());
-        if (Hand.hasFlush(h))
-        {
-            System.out.println("we have a flush!");
-            return flushes[slh]; //5 unique, garunteed to be in scope
-        }
-        if (unique5[slh] != 0)
-        { //5 unique card values (got example: ace, king, six)
-            System.out.println("unique 5!");
+        
+        // Takes care of the Flush and Straight Flush
+        if (Hand.hasFlush(h))        
+            return flushes[slh];
+        
+        // Takes care of Straight and High Card
+        if (unique5[slh] != 0) //5 unique card values                   
             return unique5[slh];
-        }
+        
+        // Takes care of the rest (used to be binary search, now using perfect hash)
         //int idx = binarySearch(multBits(h), 0, products.length-1);
         return hash_values[perfect_hash(multBits(h))];
     }
         
     // amazing...
-    private int perfect_hash(int u)
+    private static int perfect_hash(int u)
     {
       int a, b, r;
       u += 0xE91AAA35;
@@ -229,21 +255,19 @@ public class Precog extends Player
      * if passed a 5 card hand, this returns a value between
      * 0x1F00 and 0x001F
      */
-    public static int suitlessHand(long h)
+    private static int suitlessHand(long h)
     {
         int slh = 0;
         int i = 0;
         while (h != 0L)
         {
-            if ((h & 0xFL) != 0) //if right most 4 bits have a 1 set
-            {
-                slh |= (1 << i);
-            }
+            if ((h & 0xFL) != 0) //if right most 4 bits have a 1 set            
+                slh |= (1 << i);            
             i++;
             h >>>= 4;
         }
         return slh;
-    }
+    }           
     
     //use for a 5 card hand
     private static int multBits(Hand h)
@@ -254,7 +278,7 @@ public class Precog extends Player
         long bit;
         while (bits != 0)
         {
-            result *= bc_to_prime[bitPosition.get(bit = (bits & -bits))]; //rightmost bit
+            result *= bc_to_prime[bitpos64[(int)(((bit = (bits & -bits))*0x07EDD5E59A4E28C2L)>>>58)]];
             bits ^= bit;
         }
         return result;
