@@ -291,7 +291,6 @@ public class Precog extends Player
      */
     private static final int[] bc_to_prime =
     {
-        1,
         2,2,2,2,//deuce
         3,3,3,3,//3
         5,5,5,5,//4
