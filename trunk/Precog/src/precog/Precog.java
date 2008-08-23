@@ -38,6 +38,7 @@ public class Precog extends Player
     //private static short[] values = new short[4888];
     private static short[] hash_values = new short[8192];
     private static short[] hash_adjust = new short[512];
+    private static byte[][] chen_scores;
     
     //distinct -> unique multiplying factor
     private static final int MFACTOR_STRAIGHT_FLUSH = 4;
@@ -88,7 +89,7 @@ public class Precog extends Player
                 array[index++] = Short.parseShort(st.nextToken());            
         }
     }
-    
+        
     private void populateArrayFromPCT(String filename, int[] array) throws IOException
     {
         BufferedReader f = getBR(filename);
@@ -102,14 +103,40 @@ public class Precog extends Player
         }
     }
     
+    private void populateArrayFromPCT(String filename, byte[][] array) throws IOException
+    {
+        BufferedReader f = getBR(filename);
+        String curLine;
+        int index1 = 0;
+        int index2 = 0;
+        while ((curLine = f.readLine()) != null)
+        {
+            StringTokenizer st = new StringTokenizer(curLine);
+            while (st.hasMoreTokens())            
+                array[index1][index2++] = Byte.parseByte(st.nextToken());    
+            index1++;
+            index2 = 0;
+        }
+    }
+        
+    private void initializeChenArray()
+    {
+        int j = 51;
+        chen_scores = new byte[j][];
+        for (int i = 0; i < j; i++)        
+            chen_scores[i] = new byte[j--];                               
+    }
+    
     private void initiate() throws FileNotFoundException, IOException
     {                            
+        initializeChenArray();
         populateArrayFromPCT("flushes.pct", flushes);         
         populateArrayFromPCT("unique5.pct", unique5);        
         //populateArrayFromPCT("products.pct", products);    
         //populateArrayFromPCT("values.pct", values);        
         populateArrayFromPCT("hash_values.pct", hash_values);
         populateArrayFromPCT("hash_adjust.pct", hash_adjust);
+        populateArrayFromPCT("chenFormula.pct", chen_scores);
     }
 
     public Action beginTurn(GameInfo gi)
@@ -170,13 +197,9 @@ public class Precog extends Player
 
     public void acceptHand(Hand h) 
     {
-        myHand = h;
+        myHand = h;        
     }
-    
-    
-    
-    
-    
+                  
     /**
      * There are 7462 distinct poker hands, in these categories (not in order of rank):
      * 
@@ -194,7 +217,7 @@ public class Precog extends Player
      * 
      * @param h the hand to rate. for now, 5 card hand
      * @return rating.
-     */
+     */    
     private int rate(Hand h)
     {
         assert (h.size() == 5);
@@ -305,9 +328,92 @@ public class Precog extends Player
         37,37,37,37,
         41,41,41,41
     };
+              
+    /**
+     * Chen Formula: devised by Poker Champion William Chen
+     * Used for scoring Pocket cards
+     */
+    private static int scorePocket_original(Hand h)
+    {        
+        double score = 0.d;
+        boolean paired = false;
+        Card high = Hand.getHighestCard(h);
+        h.remove(high);
+        Card low = Hand.getHighestCard(h);
+        
+        switch (high.getNumber())
+        {
+            case 14:
+                score += 10.d;           
+                break;
+            case 13:
+                score += 8.d;           
+                break;
+            case 12:
+                score += 7.d;           
+                break;
+            case 11:
+                score += 6.d;           
+                break;
+            default:
+                score += ((double)high.getNumber()) / 2;
+        }
+        
+        // pairs
+        if (low.getNumber() == high.getNumber())
+        {
+            paired = true;
+            score *= 2;
+            if (score < 5.d)
+                score = 5.d;
+        }
+        
+        // round up half points
+        score = Math.round(score);               
+             
+        if (!paired)
+        {
+            // gap
+            switch (high.getNumber() - low.getNumber() - 1)
+            {
+                case 0: 
+                    if (high.getNumber() <= 11)
+                        score += 1.d;
+                    break;
+                case 1:  
+                    if (high.getNumber() <= 11)
+                        score += 1.d;
+                    score -= 1.d;
+                    break;
+                case 2: 
+                    score -= 2.d;
+                    break;
+                case 3: 
+                    score -= 4.d;
+                    break;
+                default: 
+                    score -= 5.d;
+            }
+        }
+        
+        // suited
+        if (high.getSuit().equals(low.getSuit()))
+            score += 2.d;
+        
+        return (int)score;
+    }
     
-
-
-    
-
+    private static void printChenFormulaArray()
+    {
+        for (int i = 0; i < 51; i++)
+        {
+            for (int j = i + 1; j < 52; j++)
+            {                                
+                Hand h = new Hand((0x1L << j) | (0x1L << i), 2, 2);
+                int score = scorePocket_original(h);
+                System.out.print(score + " ");
+            }
+            System.out.print("\n");
+        }
+    }
 }
