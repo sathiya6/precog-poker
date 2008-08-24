@@ -334,16 +334,18 @@ public class Precog extends Player
     /**
      * Chen Formula: devised by Poker Champion William Chen
      * Used for scoring Pocket cards
+     * Approximately 5x faster than scorePocket_original
      */
-    private static int scorePocket(Hand h)
+    private int scorePocket(Hand h) 
     {
-        long cards = h.getBitCards();
-        long low = cards & -cards;
-        cards ^= low;        
-        return chen_scores[bitpos64[(int)((low*0x07EDD5E59A4E28C2L)>>>58)]][bitpos64[(int)((cards*0x07EDD5E59A4E28C2L)>>>58)] - 1];
+        int indexLow;
+        long l;
+        long c = h.getBitCards();        
+        c ^= l = c & -c;               
+        return chen_scores[indexLow = bitpos64[(int)((l*0x07EDD5E59A4E28C2L)>>>58)]][bitpos64[(int)((c*0x07EDD5E59A4E28C2L)>>>58)] - indexLow - 1];
     }
     
-    private static int scorePocket_original(Hand h)
+    private int scorePocket_original(Hand h)
     {        
         double score = 0.d;
         boolean paired = false;
@@ -413,7 +415,7 @@ public class Precog extends Player
         return (int)score;
     }
             
-    private static void printChenFormulaArray()
+    private void printChenFormulaArray()
     {
         for (int i = 0; i < 51; i++)
         {
@@ -427,23 +429,19 @@ public class Precog extends Player
         }
     }
     
-    public static boolean verifyScorePocket()
+    // this method belongs in Test...too lazy today
+    public boolean verifyScorePocket()
     {
         for (int i = 0; i < 51; i++)
         {
             for (int j = i + 1; j < 52; j++)
             {                                
                 Hand h = new Hand((0x1L << j) | (0x1L << i), 2, 2);
-                int score1 = scorePocket_original(h);
+                int score1 = scorePocket_original(h);          
                 h = new Hand((0x1L << j) | (0x1L << i), 2, 2);
-                int score2 = scorePocket(h);
+                int score2 = scorePocket(h);                
                 if (score1 != score2)
-                {
-                    System.out.println(h.toString());
-                    System.out.println(score1);
-                    System.out.println(score2);
                     return false;
-                }
             }            
         }
         return true;
