@@ -14,14 +14,13 @@ import poker.players.*;
 public class PrecogMain 
 {
     public static void main(String... args)
-    {        
-        Player a = new Precog("precog");
-        boolean j = ((Precog)a).verifyScorePocket();
-        System.out.println(j);
-        Player b = new ConsoleHuman("Shawn");
-        Player[] c = {a, b};
-        Game g = new Game(c);
-        g.begin();
+    {         
+        Precog a = new Precog("");
+        boolean j = a.verifyScorePocket();        
+//        Player b = new ConsoleHuman("Shawn");
+//        Player[] c = {a, b};
+//        Game g = new Game(c);
+//        g.begin();
         
         //assert false : "assertions on";
         
