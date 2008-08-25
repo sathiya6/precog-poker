@@ -18,12 +18,13 @@ public class PrecogMain
 {
     public static void main(String... args)
     {         
-        //Precog a = new Precog("");
+        Precog a = new Precog("precog");
         //boolean j = a.verifyScorePocket();        
 //        Player b = new ConsoleHuman("Shawn");
-//        Player[] c = {a, b};
-//        Game g = new Game(c);
-//        g.begin();
+        Player d = new Stupid("stupid");
+        Player[] c = {a, d};
+        Game g = new Game(c);
+        g.begin();
         
         //assert false : "assertions on";
         
