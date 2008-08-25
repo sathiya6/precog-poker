@@ -190,7 +190,7 @@ public class Precog extends Player
 
     public void beginRound(GameInfo gi)
     {
-        
+        cache_poss = null;
     }
 
     public void endRound(GameInfo gi) 
