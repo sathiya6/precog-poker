@@ -1,5 +1,6 @@
 /**
  * @author: Kevin Liu (kevin91liu@gmail.com)
+ *          Shawn Xu (talkingraisin@gmail.com)
  */
 
 package precog;
@@ -299,7 +300,7 @@ public class Precog extends Player
      */    
     private static int rate(Hand h)
     {
-        assert (h.size() == 5);
+        assert h.size() == 5 : "rate() passed a hand whose size != 5";
         
         int slh = suitlessHand(h.getBitCards());
         
@@ -376,7 +377,7 @@ public class Precog extends Player
     {
         int result = 1;
         long bits = h.getBitCards();
-        assert h.size() == 5 : "multBits - h size is not 5!!!";
+        assert h.size() == 5 : "multBits(): h size is not 5!!!";
         long bit;
         while (bits != 0)
         {
@@ -415,7 +416,7 @@ public class Precog extends Player
      * Used for scoring Pocket cards
      * Approximately 5x faster than scorePocket_original
      */
-    public int scorePocket(Hand h) 
+    private static int scorePocket(Hand h) 
     {
         int indexLow;
         long l;
