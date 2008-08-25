@@ -157,7 +157,8 @@ public class Precog extends Player
         }
         else
         {
-            Hand highHand = Hand.getHighestHand(myHand, gi.getBoard());
+            System.out.println("my hand : " + myHand + " " + this.percentileRank(gi));
+            Hand highHand = this.getHighestHand(myHand, gi.getBoard());
             int rating = rate(highHand);
             //System.out.println("precog beginTurn(): " + highHand + " -rating: " + rating);
             if (rating < 4000)
@@ -201,6 +202,8 @@ public class Precog extends Player
         myHand = h;        
     }
     
+    //this field is used with percentileRank()
+    private LinkedList<Hand> cache_poss;
     /**
      * use monte carlo approach
      * @return double between 0 and 1 representing % of hands could beat
@@ -219,23 +222,61 @@ public class Precog extends Player
         //now enumerate. 
         LinkedList<Hand> possibilities = new LinkedList<Hand>();
         Card[] cards = remaining.getCards();
-        for (int i = 0; i < cards.length-1; i++)
+        double notbigger = 0.d; //# of hands less than or equal to us
+        Hand myHighest = this.getHighestHand(myHand, gi.getBoard());
+        int myRating = rate(myHighest);
+        if (cache_poss == null)
         {
-            for (int j = i + 1; j < cards.length; j++)
+            for (int i = 0; i < cards.length-1; i++)
             {
-                Hand aHand = new Hand(cards[i], cards[j]);
-                possibilities.add(aHand);
+                for (int j = i + 1; j < cards.length; j++)
+                {
+                    Hand aHand = new Hand(cards[i], cards[j]);
+                    possibilities.add(aHand);
+                    if (rate(this.getHighestHand(aHand, gi.getBoard())) >= myRating)
+                        notbigger++;
+                }
             }
         }
-        Hand myHighest = Hand.getHighestHand(myHand, gi.getBoard());
-        int myRating = rate(myHighest);
-        double notbigger = 0; //# of hands less than or equal to us
-        for (Hand h : possibilities)
+        else
         {
-            if (rate(Hand.getHighestHand(h, gi.getBoard())) >= myRating)
-                notbigger++;
+            for (Hand h : cache_poss)
+            {
+                
+            }
         }
+        cache_poss = possibilities;
         return (notbigger/possibilities.size());
+    }
+    
+    	/**
+	 * @param pHand Player's 2 card hand.
+	 * @param bHand Board's 3-5 cards. must have 3-5 cards
+	 * @return The strongest poker hand that can be made from pHand and bHand.
+	 */
+    private static Hand getHighestHand(Hand pHand, Hand bHand)
+    {
+            Hand bigHand = Hand.merge(pHand, bHand);
+                
+            Hand[] combos;
+                if (bigHand.size() == 7)
+                    combos = Hand.getCombinations7(bigHand);
+                else if (bigHand.size() == 6)
+                    combos = Hand.getCombinations6(bigHand);
+                else
+                    return bigHand;
+            Hand highest = null;
+            for (Hand candidate : combos)
+            {
+                if (highest == null)
+                {
+                    highest = candidate;
+                    continue;
+		}
+                if (rate(candidate) < rate(highest))
+                    highest = candidate;
+            }
+            return highest;
     }
                   
     /**
