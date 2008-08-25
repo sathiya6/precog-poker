@@ -9,6 +9,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.LinkedList;
 import java.util.StringTokenizer;
 import poker.engine.*;
 
@@ -199,6 +200,43 @@ public class Precog extends Player
     {
         myHand = h;        
     }
+    
+    /**
+     * use monte carlo approach
+     * @return double between 0 and 1 representing % of hands could beat
+     */
+    private double percentileRank(GameInfo gi)
+    {
+        Hand remaining = new Hand(0xFFFFFFFFFFFFFL, 52, 52);
+        for (Card c : gi.getBoard().getCards())
+        {
+            remaining.remove(c);
+        }
+        for (Card c : myHand.getCards())
+        {
+            remaining.remove(c);
+        }
+        //now enumerate. 
+        LinkedList<Hand> possibilities = new LinkedList<Hand>();
+        Card[] cards = remaining.getCards();
+        for (int i = 0; i < cards.length-1; i++)
+        {
+            for (int j = i + 1; j < cards.length; j++)
+            {
+                Hand aHand = new Hand(cards[i], cards[j]);
+                possibilities.add(aHand);
+            }
+        }
+        Hand myHighest = Hand.getHighestHand(myHand, gi.getBoard());
+        int myRating = rate(myHighest);
+        double notbigger = 0; //# of hands less than or equal to us
+        for (Hand h : possibilities)
+        {
+            if (rate(Hand.getHighestHand(h, gi.getBoard())) >= myRating)
+                notbigger++;
+        }
+        return (notbigger/possibilities.size());
+    }
                   
     /**
      * There are 7462 distinct poker hands, in these categories (not in order of rank):
@@ -218,7 +256,7 @@ public class Precog extends Player
      * @param h the hand to rate. for now, 5 card hand
      * @return rating.
      */    
-    private int rate(Hand h)
+    private static int rate(Hand h)
     {
         assert (h.size() == 5);
         
@@ -336,7 +374,7 @@ public class Precog extends Player
      * Used for scoring Pocket cards
      * Approximately 5x faster than scorePocket_original
      */
-    private int scorePocket(Hand h) 
+    public int scorePocket(Hand h) 
     {
         int indexLow;
         long l;
