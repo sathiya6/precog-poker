@@ -354,28 +354,7 @@ public class Precog extends Player
 	 */
     public static Hand getHighestHand(Hand pHand, Hand bHand)
     {
-            Hand bigHand = Hand.merge(pHand, bHand);
-                
-            Hand[] combos;
-            if (bigHand.size() == 7)
-                combos = Hand.getCombinations7(bigHand);
-            else if (bigHand.size() == 6)
-                combos = Hand.getCombinations6(bigHand);
-            else
-                return bigHand;
-            
-            Hand highest = null;
-            for (Hand candidate : combos)
-            {
-                if (highest == null)
-                {
-                    highest = candidate;
-                    continue;
-		}
-                if (rate(candidate) < rate(highest))
-                    highest = candidate;
-            }
-            return highest;
+        return new Hand(getHighestHand(pHand.getBitCards(), bHand.getBitCards()), 5, 5);
     }
     
     public static long getHighestHand(long pHand, long bHand)
@@ -610,9 +589,7 @@ public class Precog extends Player
         31,31,31,31,
         37,37,37,37,
         41,41,41,41
-    };
-              
-    
+    };              
     
     /**
      * Chen Formula: devised by Poker Champion William Chen
