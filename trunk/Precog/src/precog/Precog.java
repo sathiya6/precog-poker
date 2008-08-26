@@ -10,7 +10,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.ListIterator;
 import java.util.StringTokenizer;
 import poker.engine.*;
 
@@ -203,10 +205,38 @@ public class Precog extends Player
         myHand = h;        
     }
     
+    /*
+     * chen score to tolerance array
+     * will be populated with cached tolerances. access with the chen score + 1
+     * so a chen score of -1 will have its corresponding value in cs_tolerance[0]
+     */ 
+    private double[] cs_tolerance = new double[22];
+    
+    /*
+     * returns the max that we're willing to bet
+     * this should consider the proportion of our money.. so if we were
+     * playing games where each player starts with 1 million, we won't always
+     * fold when people bet in the hundreds
+     * 
+     * this function is currently very rudimentery
+     */
+    private double pocket_tolerance(int pocketscore)
+    {
+        if (pocketscore == -1 || pocketscore == 0)
+        {
+            return 0.;
+        }
+        //we can move these values out to become fields later as neccessary
+        double m = 0.3; //coefficient
+        double n = 2; //base of the exponent
+        double c = 0.0; //verticle shift
+        return (m * Math.pow(m, pocketscore) - c);
+    }
+    
     //this field is used with percentileRank()
     private LinkedList<Hand> cache_poss;
     /**
-     * use monte carlo approach
+     * use monte carlo approach. this should only be used after the flop comes out
      * @return double between 0 and 1 representing % of hands could beat
      */
     private double percentileRank(GameInfo gi)
@@ -220,34 +250,46 @@ public class Precog extends Player
         {
             remaining.remove(c);
         }
-        //now enumerate. 
-        LinkedList<Hand> possibilities = new LinkedList<Hand>();
-        Card[] cards = remaining.getCards();
+        
+        int totalOthers = 0;
         double notbigger = 0.d; //# of hands less than or equal to us
         Hand myHighest = this.getHighestHand(myHand, gi.getBoard());
         int myRating = rate(myHighest);
         if (cache_poss == null)
         {
+            LinkedList<Hand> possibilities = new LinkedList<Hand>();
+            Card[] cards = remaining.getCards();
             for (int i = 0; i < cards.length-1; i++)
             {
                 for (int j = i + 1; j < cards.length; j++)
                 {
                     Hand aHand = new Hand(cards[i], cards[j]);
                     possibilities.add(aHand);
+                    totalOthers++;
                     if (rate(this.getHighestHand(aHand, gi.getBoard())) >= myRating)
                         notbigger++;
                 }
             }
+            cache_poss = possibilities;
         }
         else
         {
-            for (Hand h : cache_poss)
+            Card last = gi.getTurn() == null ? gi.getRiver() : gi.getTurn();
+            for (ListIterator<Hand> iter = cache_poss.listIterator(); iter.hasNext();)
             {
-                
+                Hand cur = iter.next();
+                if (cur.has(last))
+                {
+                    iter.remove();
+                    continue;
+                }
+                totalOthers++;
+                if (rate(this.getHighestHand(cur, gi.getBoard())) >= myRating)
+                    notbigger++;
             }
         }
-        cache_poss = possibilities;
-        return (notbigger/possibilities.size());
+        
+        return (notbigger/totalOthers);
     }
     
     	/**
