@@ -10,7 +10,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.StringTokenizer;
@@ -161,7 +160,7 @@ public class Precog extends Player
         else
         {
             System.out.println("my hand : " + myHand + " " + this.percentileRank(gi));
-            Hand highHand = this.getHighestHand(myHand, gi.getBoard());
+            Hand highHand = Precog.getHighestHand(myHand, gi.getBoard());
             int rating = rate(highHand);
             //System.out.println("precog beginTurn(): " + highHand + " -rating: " + rating);
             if (rating < 4000)
@@ -235,6 +234,8 @@ public class Precog extends Player
     
     //this field is used with percentileRank()
     private LinkedList<Hand> cache_poss;
+    
+    private LinkedList<Long> cache_poss_long;
     /**
      * use monte carlo approach. this should only be used after the flop comes out
      * @return double between 0 and 1 representing % of hands could beat
@@ -253,7 +254,7 @@ public class Precog extends Player
         
         int totalOthers = 0;
         double notbigger = 0.d; //# of hands less than or equal to us
-        Hand myHighest = this.getHighestHand(myHand, gi.getBoard());
+        Hand myHighest = Precog.getHighestHand(myHand, gi.getBoard());
         int myRating = rate(myHighest);
         if (cache_poss == null)
         {
@@ -266,7 +267,7 @@ public class Precog extends Player
                     Hand aHand = new Hand(cards[i], cards[j]);
                     possibilities.add(aHand);
                     totalOthers++;
-                    if (rate(this.getHighestHand(aHand, gi.getBoard())) >= myRating)
+                    if (rate(Precog.getHighestHand(aHand, gi.getBoard())) >= myRating)
                         notbigger++;
                 }
             }
@@ -274,7 +275,7 @@ public class Precog extends Player
         }
         else
         {
-            Card last = gi.getTurn() == null ? gi.getRiver() : gi.getTurn();
+            Card last = gi.getRiver() == null ? gi.getTurn() : gi.getRiver();
             for (ListIterator<Hand> iter = cache_poss.listIterator(); iter.hasNext();)
             {
                 Hand cur = iter.next();
@@ -284,7 +285,7 @@ public class Precog extends Player
                     continue;
                 }
                 totalOthers++;
-                if (rate(this.getHighestHand(cur, gi.getBoard())) >= myRating)
+                if (rate(Precog.getHighestHand(cur, gi.getBoard())) >= myRating)
                     notbigger++;
             }
         }
@@ -292,22 +293,77 @@ public class Precog extends Player
         return (notbigger/totalOthers);
     }
     
+    private double percentileRank2(GameInfo gi)
+    {
+        long remaining = 0xFFFFFFFFFFFFFL;
+        long hand = myHand.getBitCards();
+        long board = gi.getBoard().getBitCards();
+        remaining ^= (hand | board);
+        
+        int totalOthers = 0;
+        double notbigger = 0.d; //# of hands less than or equal to us
+        long myHighest = Precog.getHighestHand(hand, board);
+        int myRating = rate(myHighest);
+        
+        int count = bitCount_dense(remaining);               
+        if (cache_poss_long == null)
+        {
+            LinkedList<Long> possibilities = new LinkedList<Long>();
+            long a = remaining;
+            long b1, b2;
+            long c;
+            for (int i = 0; i < count - 1; i++)
+            {
+                c = a ^= b1 = a & -a; // b1 is the lowest bit                                
+                for (int j = i + 1; j < count; j++)
+                {
+                    c ^= b2 = c & -c;                    
+                    long aHand = b1 | b2;
+                    possibilities.add(aHand);
+                    totalOthers++;
+                    if (rate(Precog.getHighestHand(aHand, board)) >= myRating)
+                        notbigger++;
+                }
+            }
+            cache_poss_long = possibilities;
+        }
+        else
+        {
+            Card last = gi.getTurn() == null ? gi.getRiver() : gi.getTurn();
+            for (ListIterator<Long> iter = cache_poss_long.listIterator(); iter.hasNext();)
+            {
+                Long cur = iter.next();
+                if ((cur & last.getValue()) != 0)
+                {
+                    iter.remove();
+                    continue;
+                }
+                totalOthers++;
+                if (rate(Precog.getHighestHand(cur, board)) >= myRating)
+                    notbigger++;
+            }
+        }
+        
+        return 0.d;
+    }
+    
     	/**
 	 * @param pHand Player's 2 card hand.
 	 * @param bHand Board's 3-5 cards. must have 3-5 cards
 	 * @return The strongest poker hand that can be made from pHand and bHand.
 	 */
-    private static Hand getHighestHand(Hand pHand, Hand bHand)
+    public static Hand getHighestHand(Hand pHand, Hand bHand)
     {
             Hand bigHand = Hand.merge(pHand, bHand);
                 
             Hand[] combos;
-                if (bigHand.size() == 7)
-                    combos = Hand.getCombinations7(bigHand);
-                else if (bigHand.size() == 6)
-                    combos = Hand.getCombinations6(bigHand);
-                else
-                    return bigHand;
+            if (bigHand.size() == 7)
+                combos = Hand.getCombinations7(bigHand);
+            else if (bigHand.size() == 6)
+                combos = Hand.getCombinations6(bigHand);
+            else
+                return bigHand;
+            
             Hand highest = null;
             for (Hand candidate : combos)
             {
@@ -320,6 +376,92 @@ public class Precog extends Player
                     highest = candidate;
             }
             return highest;
+    }
+    
+    public static long getHighestHand(long pHand, long bHand)
+    {
+        long bigHand = pHand | bHand;
+        long[] combos;
+        int count = bitCount(bigHand);
+        if (count == 7)
+            combos = getCombinations7(bigHand);
+        else if (count == 6)
+            combos = getCombinations6(bigHand);
+        else
+            return bigHand;
+        
+        long highest = 0L;
+        for (long candidate : combos)
+        {
+            if (highest == 0L)
+            {
+                highest = candidate;
+                continue;
+            }
+            if (rate(candidate) < rate(highest))
+                highest = candidate;
+        }
+        return highest;
+    }    
+    
+    /**
+	 * @param bigHand a long with 6 bits set
+	 * @return All combinations of 5 bits set out of bigHand
+     */
+    private static long[] getCombinations6(long bigHand)
+    {
+        long copy = bigHand;      
+        long[] ret = new long[6];        
+        
+        long bit;
+        for (int i = 0; i < 6; i++)        
+        {
+            ret[i] = copy ^ (bit = (bigHand & -bigHand));
+            bigHand ^= bit;
+        }        
+        
+        return ret;
+    }
+
+    /**
+	 * @param bigHand a long with 7 bits set
+	 * @return All combinations of 5 bits set out of bigHand
+     */
+    private static long[] getCombinations7(long bigHand)
+    {
+        long copy = bigHand;      
+        long[] bits = new long[7];
+        long[] ret = new long[21];        
+        
+        for (int i = 0; i < 7; i++)        
+            bigHand ^= bits[i] = bigHand & -bigHand;
+        
+        int idx = 0;
+        for (int i = 0; i < 6; i++)
+            for (int j = i + 1; j < 7; j++)
+                ret[idx++] = copy ^ (bits[i] | bits[j]);
+        
+        return ret;
+    }
+    
+    private static int bitCount(long l)
+    {
+        int c;
+        for (c = 0; l != 0; c++)
+            l &= l - 1;        
+        return c;
+    }
+    
+    private static int bitCount_dense(long n)   
+    {
+       int count = 64;
+       n ^= 0xFFFFFFFFFFFFFFFFL;
+       while (n != 0) 
+       {
+          count-- ;
+          n &= (n - 1); 
+       }
+       return count;
     }
                   
     /**
@@ -344,10 +486,15 @@ public class Precog extends Player
     {
         assert h.size() == 5 : "rate() passed a hand whose size != 5";
         
-        int slh = suitlessHand(h.getBitCards());
+        return rate(h.getBitCards());
+    }
+    
+    private static int rate(long h)
+    {
+        int slh = suitlessHand(h);
         
         // Takes care of the Flush and Straight Flush
-        if (Hand.hasFlush(h))        
+        if (hasFlush(h))        
             return flushes[slh];
         
         // Takes care of Straight and High Card
@@ -359,6 +506,15 @@ public class Precog extends Player
         return hash_values[perfect_hash(multBits(h))];
     }
         
+    private static boolean hasFlush(long h)
+    {
+            if ((h | Card.SPADES_MASK) == Card.SPADES_MASK) return true;
+            if ((h | Card.CLUBS_MASK) == Card.CLUBS_MASK) return true;
+            if ((h | Card.DIAMONDS_MASK) == Card.DIAMONDS_MASK) return true;
+            if ((h | Card.HEARTS_MASK) == Card.HEARTS_MASK) return true;
+            return false;
+    }
+    
     // amazing...
     private static int perfect_hash(int u)
     {
@@ -417,9 +573,14 @@ public class Precog extends Player
     //use for a 5 card hand
     private static int multBits(Hand h)
     {
-        int result = 1;
-        long bits = h.getBitCards();
         assert h.size() == 5 : "multBits(): h size is not 5!!!";
+        return multBits(h.getBitCards());        
+    }
+    
+    private static int multBits(long h)
+    {
+        int result = 1;
+        long bits = h;        
         long bit;
         while (bits != 0)
         {

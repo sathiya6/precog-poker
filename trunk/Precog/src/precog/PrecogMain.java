@@ -18,13 +18,32 @@ public class PrecogMain
 {
     public static void main(String... args)
     {         
-        Precog a = new Precog("precog");
-        //boolean j = a.verifyScorePocket();        
-//        Player b = new ConsoleHuman("Shawn");
-        Player d = new Stupid("stupid");
-        Player[] c = {a, d};
-        Game g = new Game(c);
-        g.begin();
+        for (int i = 0; i < 1000; i++)
+        {
+            Deck deck = new Deck();
+
+            Card a = deck.drawCard();
+            Card b = deck.drawCard();
+            Card c = deck.drawCard();
+            Card d = deck.drawCard();
+            Card e = deck.drawCard();
+            Card[] boardCards = {a,b,c,d,e};
+            Hand board = new Hand(boardCards);
+
+            Card h1 = deck.drawCard();
+            //Card h2 = deck.drawCard();
+            Card[] handCards = {h1};
+            Hand hand = new Hand(handCards);
+
+            Precog.getHighestHand(hand, board);
+            Precog.getHighestHand(hand.getBitCards(), board.getBitCards());
+        }
+        
+//        Precog a = new Precog("precog");        
+//        Player d = new Stupid("stupid");
+//        Player[] c = {a, d};
+//        Game g = new Game(c);
+//        g.begin();
         
         //assert false : "assertions on";
         
