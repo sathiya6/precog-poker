@@ -16,9 +16,42 @@ import poker.players.*;
  */
 public class PrecogMain 
 {
+    // adapted version for testing
+    private static double percentileRank2(Hand _board, Hand myHand)
+    {        
+        long hand = myHand.getBitCards();
+        long board = _board.getBitCards();        
+        
+        int totalOthers = 0;
+        double notbigger = 0.d; //# of hands less than or equal to us       
+        int myRating = Precog.rate(Precog.getHighestHand(hand, board));        
+                
+        
+        long a = 0xFFFFFFFFFFFFFL ^ (hand | board);
+        long b1, b2, c;            
+
+        int count = Precog.bitCount_dense(a);       
+        for (int i = 0; i < count - 1; i++)
+        {
+            c = a ^= b1 = a & -a; // b1 is the lowest bit                                
+            for (int j = i + 1; j < count; j++)
+            {
+                c ^= b2 = c & -c;                    
+                long aHand = b1 | b2;
+
+                totalOthers++;
+                if (Precog.rate(Precog.getHighestHand(aHand, board)) >= myRating)
+                    notbigger++;
+            }
+        }   
+        
+        return (notbigger/totalOthers);
+    }
+    
     public static void main(String... args)
     {         
-        for (int i = 0; i < 1000; i++)
+        Precog p = new Precog("");
+        for (int i = 0; i < 10; i++)
         {
             Deck deck = new Deck();
 
@@ -27,17 +60,22 @@ public class PrecogMain
             Card c = deck.drawCard();
             Card d = deck.drawCard();
             Card e = deck.drawCard();
-            Card[] boardCards = {a,b,c,d,e};
-            Hand board = new Hand(boardCards);
+            
+            Card[] boardCards = {a,b,c};
+            Hand flop = new Hand(boardCards);
 
             Card h1 = deck.drawCard();
-            //Card h2 = deck.drawCard();
-            Card[] handCards = {h1};
+            Card h2 = deck.drawCard();
+            Card[] handCards = {h1, h2};
             Hand hand = new Hand(handCards);
-
-            Precog.getHighestHand(hand, board);
-            Precog.getHighestHand(hand.getBitCards(), board.getBitCards());
+            
+            double percent = percentileRank2(flop, hand);
+            
+            Hand bigHand = Hand.merge(hand, flop);
+            System.out.println(bigHand);
+            System.out.println(percent);
         }
+        
         
 //        Precog a = new Precog("precog");        
 //        Player d = new Stupid("stupid");
