@@ -243,7 +243,8 @@ public class Precog extends Player
     private double percentileRank(GameInfo gi)
     {
         Hand remaining = new Hand(0xFFFFFFFFFFFFFL, 52, 52);
-        for (Card c : gi.getBoard().getCards())
+        Hand board = gi.getBoard();
+        for (Card c : board.getCards())
         {
             remaining.remove(c);
         }
@@ -254,7 +255,7 @@ public class Precog extends Player
         
         int totalOthers = 0;
         double notbigger = 0.d; //# of hands less than or equal to us
-        Hand myHighest = Precog.getHighestHand(myHand, gi.getBoard());
+        Hand myHighest = Precog.getHighestHand(myHand, board);
         int myRating = rate(myHighest);
         if (cache_poss == null)
         {
@@ -267,7 +268,7 @@ public class Precog extends Player
                     Hand aHand = new Hand(cards[i], cards[j]);
                     possibilities.add(aHand);
                     totalOthers++;
-                    if (rate(Precog.getHighestHand(aHand, gi.getBoard())) >= myRating)
+                    if (rate(Precog.getHighestHand(aHand, board)) >= myRating)
                         notbigger++;
                 }
             }
@@ -285,7 +286,7 @@ public class Precog extends Player
                     continue;
                 }
                 totalOthers++;
-                if (rate(Precog.getHighestHand(cur, gi.getBoard())) >= myRating)
+                if (rate(Precog.getHighestHand(cur, board)) >= myRating)
                     notbigger++;
             }
         }
@@ -294,24 +295,21 @@ public class Precog extends Player
     }
     
     private double percentileRank2(GameInfo gi)
-    {
-        long remaining = 0xFFFFFFFFFFFFFL;
+    {        
         long hand = myHand.getBitCards();
-        long board = gi.getBoard().getBitCards();
-        remaining ^= (hand | board);
+        long board = gi.getBoard().getBitCards();        
         
         int totalOthers = 0;
-        double notbigger = 0.d; //# of hands less than or equal to us
-        long myHighest = Precog.getHighestHand(hand, board);
-        int myRating = rate(myHighest);
-        
-        int count = bitCount_dense(remaining);               
-        if (cache_poss_long == null)
+        double notbigger = 0.d; //# of hands less than or equal to us       
+        int myRating = rate(Precog.getHighestHand(hand, board));        
+                
+        if (cache_poss_long == null) // right after flop
         {
             LinkedList<Long> possibilities = new LinkedList<Long>();
-            long a = remaining;
-            long b1, b2;
-            long c;
+            long a = 0xFFFFFFFFFFFFFL ^ (hand | board);
+            long b1, b2, c;            
+            
+            int count = bitCount_dense(a);       
             for (int i = 0; i < count - 1; i++)
             {
                 c = a ^= b1 = a & -a; // b1 is the lowest bit                                
@@ -327,13 +325,14 @@ public class Precog extends Player
             }
             cache_poss_long = possibilities;
         }
-        else
+        else // after turn or river
         {
             Card last = gi.getTurn() == null ? gi.getRiver() : gi.getTurn();
+            long lastValue = last.getValue();
             for (ListIterator<Long> iter = cache_poss_long.listIterator(); iter.hasNext();)
             {
                 Long cur = iter.next();
-                if ((cur & last.getValue()) != 0)
+                if ((cur & lastValue) != 0)
                 {
                     iter.remove();
                     continue;
@@ -344,7 +343,7 @@ public class Precog extends Player
             }
         }
         
-        return 0.d;
+        return (notbigger/totalOthers);
     }
     
     	/**
@@ -431,7 +430,7 @@ public class Precog extends Player
         return c;
     }
     
-    private static int bitCount_dense(long n)   
+    public static int bitCount_dense(long n)   
     {
        int count = 64;
        n ^= 0xFFFFFFFFFFFFFFFFL;
@@ -468,7 +467,7 @@ public class Precog extends Player
         return rate(h.getBitCards());
     }
     
-    private static int rate(long h)
+    public static int rate(long h)
     {
         int slh = suitlessHand(h);
         
