@@ -14,10 +14,13 @@ import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.StringTokenizer;
 import poker.engine.*;
+import poker.engine.Money.Currency;
 
 public class Precog extends Player
 {
     private Hand myHand;
+    private int myID;
+    private static final int THREADS = 2;
     
     /**
      *  Perfect Hashtable for bitposition. This table returns the position of the bit set.
@@ -25,14 +28,14 @@ public class Precog extends Player
      */
     private static int[] bitpos64 =
     {
-	63,  0, 58,  1, 59, 47, 53,  2,
-	60, 39, 48, 27, 54, 33, 42,  3,
-	61, 51, 37, 40, 49, 18, 28, 20,
-	55, 30, 34, 11, 43, 14, 22,  4,
-	62, 57, 46, 52, 38, 26, 32, 41,
-	50, 36, 17, 19, 29, 10, 13, 21,
-	56, 45, 25, 31, 35, 16,  9, 12,
-	44, 24, 15,  8, 23,  7,  6,  5
+		63,  0, 58,  1, 59, 47, 53,  2,
+		60, 39, 48, 27, 54, 33, 42,  3,
+		61, 51, 37, 40, 49, 18, 28, 20,
+		55, 30, 34, 11, 43, 14, 22,  4,
+		62, 57, 46, 52, 38, 26, 32, 41,
+		50, 36, 17, 19, 29, 10, 13, 21,
+		56, 45, 25, 31, 35, 16,  9, 12,
+		44, 24, 15,  8, 23,  7,  6,  5
     };
     
     private static short[] flushes = new short[7937];
@@ -43,15 +46,19 @@ public class Precog extends Player
     private static short[] hash_adjust = new short[512];
     private static byte[][] chen_scores;
     
-    //distinct -> unique multiplying factor
-    private static final int MFACTOR_STRAIGHT_FLUSH = 4;
-    private static final int MFACTOR_FOUR_OF_A_KIND = 4;
-    private static final int MFACTOR_FULL_HOUSE = 24;
-    private static final int MFACTOR_FLUSH = 4;
-    private static final int MFACTOR_STRAIGHT = 1020;
-    private static final int MFACTOR_THREE_OF_A_KIND = 64;
-    private static final int MFACTOR_TWO_PAIR = 144;
-    private static final int MFACTOR_PAIR = 1020;
+    /**
+     * chen score to tolerance array
+     * will be populated with cached tolerances. access with the chen score + 1
+     * so a chen score of -1 will have its corresponding value in cs_tolerance[0]
+     */ 
+    private double[] cs_tolerance = new double[22];
+    
+    private double pf_avg_perc_cache;
+    
+    
+    /****************************************************
+     * 					Constructor						*
+     ****************************************************/
     
     public Precog(String _name)
     {
@@ -69,9 +76,13 @@ public class Precog extends Player
         catch (IOException e)
         {
             e.printStackTrace();
-            System.exit(-1);
+            System.exit(-2);
         }
     }    
+    
+    /****************************************************
+     * 			Initialization Methods					*
+     ****************************************************/
     
     private BufferedReader getBR(String filename)
     {
@@ -130,6 +141,14 @@ public class Precog extends Player
             chen_scores[i] = new byte[j--];                               
     }
     
+    private void fill_cs_tol()
+    {
+        for (int i = 0; i < 22; i++)
+        {
+            cs_tolerance[i] = calculate_cs_tol(i-1);
+        }
+    }
+    
     private void initiate() throws FileNotFoundException, IOException
     {                            
         initializeChenArray();
@@ -140,213 +159,568 @@ public class Precog extends Player
         populateArrayFromPCT("hash_values.pct", hash_values);
         populateArrayFromPCT("hash_adjust.pct", hash_adjust);
         populateArrayFromPCT("chenFormula.pct", chen_scores);
+        fill_cs_tol();
     }
+    
+    /****************************************************
+     * 				Overridden Player Methods			*
+     ****************************************************/
 
     public Action beginTurn(GameInfo gi)
     {
-        GameState.State curState = gi.getCurrentState();
-        if (curState.equals(GameState.State.FIRSTBET))
+        switch (gi.getCurrentState())
         {
-            if (gi.isValid(new Check(gi.getId(this))))
-            {
-                return new Check(gi.getId(this));
-            }
-            else if (gi.getMinimumCallAmount().getAmount() < 10.)
-            {
-                return new Call(gi.getId(this));
-            }
-            else return new Fold(gi.getId(this));
-        }
-        else
-        {
-            System.out.println("my hand : " + myHand + " " + this.percentileRank(gi));
-            Hand highHand = Precog.getHighestHand(myHand, gi.getBoard());
-            int rating = rate(highHand);
-            //System.out.println("precog beginTurn(): " + highHand + " -rating: " + rating);
-            if (rating < 4000)
-            {
-                if (gi.getBet(this).getAmount() < 5)
-                {
-                    double raise = (gi.getStash(this).getAmount() < 10.0)
-                            ? gi.getStash(this).getAmount() : 10.0;
-                    if (raise == 0.)
-                    {
-                        Action a = new Call(gi.getId(this));
-                        if (gi.isValid(a))
-                        {
-                            return a;
-                        }
-                        else return new Check(gi.getId(this));
-                    }
-                    return new Raise(gi.getId(this), new Money(raise, Money.Currency.DOLLARS));
-                }
-                else //if (gi.getMinimumCallAmount().getAmount() < 5.)
-                {
-                    return new Call(gi.getId(this));
-                }
-                //else return new Fold(gi.getId(this));
-            }
-            else return new Fold(gi.getId(this));
+	        case FIRSTBET:
+	        	return first_bet(gi);
+	        case SECONDBET:
+	        	return second_bet(gi);
+	        case THIRDBET:
+	        	return third_bet(gi);
+	        case FINALBET:
+	        	return fourth_bet(gi);
+	        default:
+	        	throw new IllegalStateException("Precog beginTurn state is messed up");
         }
     }
 
     public void beginRound(GameInfo gi)
-    {
-        cache_poss = null;
+    {       
+    	myID = gi.getId(this);
+    	pf_avg_perc_cache = -3.14;
     }
 
     public void endRound(GameInfo gi) 
     {
+    	pf_avg_perc_cache = -3.14;
     }
 
     public void acceptHand(Hand h) 
     {
         myHand = h;        
     }
+
+    /****************************************************
+     * 				State Specific Methods				*
+     ****************************************************/
     
-    /*
-     * chen score to tolerance array
-     * will be populated with cached tolerances. access with the chen score + 1
-     * so a chen score of -1 will have its corresponding value in cs_tolerance[0]
-     */ 
-    private double[] cs_tolerance = new double[22];
-    
-    /*
-     * returns the max that we're willing to bet
-     * this should consider the proportion of our money.. so if we were
-     * playing games where each player starts with 1 million, we won't always
-     * fold when people bet in the hundreds
-     * 
-     * this function is currently very rudimentery
-     */
-    private double pocket_tolerance(int pocketscore)
+    private Action first_bet(GameInfo gi)
     {
-        if (pocketscore == -1 || pocketscore == 0)
+    	int chenscore = scorePocket(myHand);
+    	//System.out.println("chenscore: " + chenscore);
+    	double mytol = get_cs_tol(chenscore);
+   	   	double myStash = gi.getStash(myID).getAmount();    
+    	double raise_factor = 1.d / 3.d;
+   	   	
+		Action a;
+		if (gi.isValid(a = new Check(myID))) // This means we are the first to raise (potentially)
+		{
+			// Remember we don't want to fold if we're the first to go, only later depending on the stake
+			// But should we check or raise?
+			
+			if (mytol >= myStash)
+			{
+				if (myStash < 1)
+					return new Check(myID);
+				// if our tolerance is great, bet a third of our stash
+				return new Raise(myID, new Money(myStash * raise_factor, Currency.DOLLARS));
+			}
+			else if (mytol > (1 / raise_factor))
+			{
+				// our tolerance is less than stash, but substantial
+				return new Raise(myID, new Money(mytol * raise_factor, Currency.DOLLARS));
+			}
+			else
+			{
+				// horrible, we check for now, and see what other people do
+				return a;
+			}
+		}
+		else
+		{
+			// not first to raise
+			
+			// let's see what's at stake here
+			double minCall = gi.getMinimumCallAmount().getAmount();
+			double alreadyPutIn = gi.getBet(myID).getAmount();
+			double extraNeeded = minCall - alreadyPutIn;
+			
+			if (alreadyPutIn <= 0)
+			{
+				// either we checked before, or it just got to us
+				if (mytol > minCall)
+				{
+					// we have a good hand, we're in					
+					double raise_amount;
+					if (mytol > myStash)
+					{
+						// we don't wanna go all in, just call it
+						return new Call(myID);
+					}
+					else
+					{
+						raise_amount = mytol - minCall;
+						if (raise_amount < 1.d)
+							raise_amount = 1.d;
+						return new Raise(myID, new Money(raise_amount, Currency.DOLLARS));
+					}
+				}
+				else if (mytol == minCall)
+				{
+					// we can tolerate exactly how much we need, just call it
+					return new Call(myID);
+				}
+				else
+				{
+					// the stakes are too high, let's play it safe
+					return new Fold(myID);
+				}
+			}
+			else
+			{
+				// since we've raised before, we don't want to raise again
+				return new Call(myID);
+			}
+		}    	
+    }
+    
+    //after flop
+    private Action second_bet(GameInfo gi)
+    {
+    	double p;
+    	if (pf_avg_perc_cache < 0)
+    		p = pf_avg_perc_cache = pf_avg_perc_multithread(myHand.getBitCards(), gi.getBoard().getBitCards(), THREADS);
+    	else
+    		p = pf_avg_perc_cache;
+    	
+    	System.out.println("pf avg perc: " + p);
+    	    	
+   	   	double myStash = gi.getStash(myID).getAmount();
+   	   	double mytol = (p - expectPC(gi.getNumberOfPlayersThatStartedThisRound())) * myStash;    	
+    	
+    	Action a;
+		if (gi.isValid(a = new Check(myID))) // This means we are the first to raise (potentially)
+		{
+			// Remember we don't want to fold if we're the first to go, only later depending on the stake
+			// But should we check or raise?
+			
+			if (mytol >= myStash)
+			{
+				// if our tolerance is great, bet a third of our stash
+				if (myStash < 1)
+					return new Check(myID);
+				return new Raise(myID, new Money(myStash, Currency.DOLLARS));
+			}
+			else if (mytol > 1)
+			{
+				// our tolerance is less than stash, but substantial
+				return new Raise(myID, new Money(mytol, Currency.DOLLARS));
+			}
+			else
+			{
+				// horrible, we check for now, and see what other people do
+				return a;
+			}
+		}
+		else
+		{
+			// not first to raise
+			
+			// let's see what's at stake here
+			double minCall = gi.getMinimumCallAmount().getAmount();
+			double alreadyPutIn = gi.getBet(myID).getAmount();
+			double extraNeeded = minCall - alreadyPutIn;
+			
+			if (alreadyPutIn <= 0)
+			{
+				// either we checked before, or it just got to us
+				if (mytol > minCall)
+				{
+					// we have a good hand, we're in					
+					double raise_amount;
+					if (mytol > myStash)
+					{
+						// we don't wanna go all in, just call it
+						return new Call(myID);
+					}
+					else
+					{
+						raise_amount = mytol - minCall;
+						if (raise_amount < 1.d)
+							raise_amount = 1.d;
+						return new Raise(myID, new Money(raise_amount, Currency.DOLLARS));
+					}
+				}
+				else if (mytol == minCall)
+				{
+					// we can tolerate exactly how much we need, just call it
+					return new Call(myID);
+				}
+				else
+				{
+					// the stakes are too high, let's play it safe
+					return new Fold(myID);
+				}
+			}
+			else
+			{
+				// since we've raised before, we don't want to raise again
+				
+				
+				
+					return new Call(myID);
+			}
+		}    	    	
+    }
+    
+    //after turn
+    private Action third_bet(GameInfo gi)
+    {
+    	Action a;
+		if (gi.isValid(a = new Call(myID)))
+		{
+			return a; 
+		}
+		else if (gi.isValid(a = new Check(myID)))
+		{
+			return a;
+		}
+    	return null;
+    }
+    
+    //after river
+    private Action fourth_bet(GameInfo gi)
+    {
+    	Action a;
+		if (gi.isValid(a = new Call(myID)))
+		{
+			return a;
+		}
+		else if (gi.isValid(a = new Check(myID)))
+		{
+			return a;
+		}
+    	return null;
+    }
+    
+    /****************************************************
+     * 				Calculation Methods					*
+     ****************************************************/      
+
+    /**
+     * Calculates the expected percentile cutoff given the number of active players
+     * 
+     * @param numPlayers number of active players
+     * @return a double between 0 and 1 representing expected percentile cutoff 
+     */
+    private static double expectPC(int numPlayers)
+    {
+    	return 1 - (0.975d / numPlayers);
+    }
+    
+    /**   
+     * This method is the cached version of get_cs_tol_original()  
+     * 
+     * @param chenscore the Chen score
+     * @return the max amount of chips that we're willing to bet    
+     */
+    public double get_cs_tol(int chenscore)
+    {
+        return cs_tolerance[chenscore+1];
+    }     
+    
+    /**
+     *   
+     * This method is the original version of get_cs_tol()
+     * returns the max that we're willing to bet
+     * TODO: this should consider the proportion of our money.. so if we were
+     * playing games where each player starts with 1 million, we won't always
+     * fold when people bet in the hundreds 
+     * this function is currently very rudimentery
+     * 
+     * @param chenscore the Chen score
+     * @return the max amount of chips that we're willing to bet    
+     */
+    private static double calculate_cs_tol(int pocketscore)
+    {
+        if (pocketscore < 4)
         {
             return 0.;
         }
         //we can move these values out to become fields later as neccessary
         double m = 0.3; //coefficient
-        double n = 2; //base of the exponent
-        double c = 0.0; //verticle shift
-        return (m * Math.pow(m, pocketscore) - c);
+        double n = 1.34; //base of the exponent
+        double c = 0.0; //vertical shift
+        return (m * Math.pow(n, pocketscore) + c);
     }
-    
-    //this field is used with percentileRank()
-    private LinkedList<Hand> cache_poss;
-    
-    private LinkedList<Long> cache_poss_long;
+        
     /**
-     * use monte carlo approach. this should only be used after the flop comes out
-     * @return double between 0 and 1 representing % of hands could beat
+     * Calculates the percentile rank of the current hand + board situation
+     * Warning: this should only be used after the flop comes out
+     * Update: This method is now only used after the river card comes out
+     *
+     * @param hand a long representing my hand
+     * @param board a long representing the board
+     * @return double between 0 and 1 representing % of hands could beat or tie
+     */   
+    public static double pr_perc_calc(long hand, long board)
+    {                
+	    int totalOthers = 0;
+	    double notbigger = 0.d; //# of hands less than or equal to us
+	    
+	    Precog.getHighestHand(hand, board);
+	    int myRating = hRating;       	     
+	    
+        long a = 0xFFFFFFFFFFFFFL ^ (hand | board);
+        long b1, b2, c;                    
+        int count = bitCount_dense(a);       
+        for (int i = 0; i < count - 1; i++)
+        {
+            c = a ^= b1 = a & -a; // b1 is the lowest bit                                
+            for (int j = i + 1; j < count; j++)
+            {
+                c ^= b2 = c & -c;
+                totalOthers++;
+                getHighestHand(b1 | b2, board);
+                if (hRating >= myRating)
+                    notbigger++;
+            }
+        }            
+        
+        return (notbigger/totalOthers);
+    }      
+        
+    /**
+     * Enumerates all possible 2 card combinations based on the taken cards
+     * @param takenCards cards that cannot be part of the set
+     * @return an array of longs representing all possible combinations
      */
-    private double percentileRank(GameInfo gi)
+    private static long[] enum_pos_opp_hands(long taken)
+    {        	  
+    	int idx = 0;
+		long c1, c2, p1, p2;	  
+		c1 = 0xFFFFFFFFFFFFFL ^ (taken);
+		int count = bitCount_dense(c1);   
+		long[] ret;
+		switch (count)
+		{
+		  	case 47: 
+		  		ret = new long[1081];
+		  		break;
+		  	case 46: 
+		  		ret = new long[1035];
+		  		break;
+		  	default:
+		  		ret = null;
+		}
+		for (int i = 0; i < count - 1; i++)
+		{
+			c2 = c1 ^= p1 = c1 & -c1;
+		    for (int j = i + 1; j < count; j++)
+		    {
+		    	c2 ^= p2 = c2 & -c2;
+		    	ret[idx++] = p1 | p2;
+		    }
+		}
+		return ret;	
+    }
+          	
+    private static long[] enum_pos_river_cards(long taken)
     {
-        Hand remaining = new Hand(0xFFFFFFFFFFFFFL, 52, 52);
-        Hand board = gi.getBoard();
-        for (Card c : board.getCards())
-        {
-            remaining.remove(c);
-        }
-        for (Card c : myHand.getCards())
-        {
-            remaining.remove(c);
-        }
-        
-        int totalOthers = 0;
-        double notbigger = 0.d; //# of hands less than or equal to us
-        Hand myHighest = Precog.getHighestHand(myHand, board);
-        int myRating = rate(myHighest);
-        if (cache_poss == null)
-        {
-            LinkedList<Hand> possibilities = new LinkedList<Hand>();
-            Card[] cards = remaining.getCards();
-            for (int i = 0; i < cards.length-1; i++)
-            {
-                for (int j = i + 1; j < cards.length; j++)
-                {
-                    Hand aHand = new Hand(cards[i], cards[j]);
-                    possibilities.add(aHand);
-                    totalOthers++;
-                    if (rate(Precog.getHighestHand(aHand, board)) >= myRating)
-                        notbigger++;
-                }
-            }
-            cache_poss = possibilities;
-        }
-        else
-        {
-            Card last = gi.getRiver() == null ? gi.getTurn() : gi.getRiver();
-            for (ListIterator<Hand> iter = cache_poss.listIterator(); iter.hasNext();)
-            {
-                Hand cur = iter.next();
-                if (cur.has(last))
-                {
-                    iter.remove();
-                    continue;
-                }
-                totalOthers++;
-                if (rate(Precog.getHighestHand(cur, board)) >= myRating)
-                    notbigger++;
-            }
-        }
-        
-        return (notbigger/totalOthers);
+    	long[] ret = new long[46];
+    	long remain = 0xFFFFFFFFFFFFFL ^ taken;
+    	for (int i = 0; i < 46; i++)    	
+    		remain ^= ret[i] = remain & -remain;
+    	return ret;
     }
     
-    private double percentileRank2(GameInfo gi)
-    {        
-        long hand = myHand.getBitCards();
-        long board = gi.getBoard().getBitCards();        
-        
-        int totalOthers = 0;
-        double notbigger = 0.d; //# of hands less than or equal to us       
-        int myRating = rate(Precog.getHighestHand(hand, board));        
-                
-        if (cache_poss_long == null) // right after flop
-        {
-            LinkedList<Long> possibilities = new LinkedList<Long>();
-            long a = 0xFFFFFFFFFFFFFL ^ (hand | board);
-            long b1, b2, c;            
-            
-            int count = bitCount_dense(a);       
-            for (int i = 0; i < count - 1; i++)
-            {
-                c = a ^= b1 = a & -a; // b1 is the lowest bit                                
-                for (int j = i + 1; j < count; j++)
-                {
-                    c ^= b2 = c & -c;                    
-                    long aHand = b1 | b2;
-                    possibilities.add(aHand);
-                    totalOthers++;
-                    if (rate(Precog.getHighestHand(aHand, board)) >= myRating)
-                        notbigger++;
-                }
-            }
-            cache_poss_long = possibilities;
-        }
-        else // after turn or river
-        {
-            Card last = gi.getTurn() == null ? gi.getRiver() : gi.getTurn();
-            long lastValue = last.getValue();
-            for (ListIterator<Long> iter = cache_poss_long.listIterator(); iter.hasNext();)
-            {
-                Long cur = iter.next();
-                if ((cur & lastValue) != 0)
-                {
-                    iter.remove();
-                    continue;
-                }
-                totalOthers++;
-                if (rate(Precog.getHighestHand(cur, board)) >= myRating)
-                    notbigger++;
-            }
-        }
-        
-        return (notbigger/totalOthers);
+    /**
+     * Calculates the average percentile cutoff after the flop, considering
+     * potential hand combinations from turn and river
+     * @param hand a long representing my hand
+     * @param board a long representing the board after flop
+     * @return average percentile
+     */ 
+  	public static double pf_avg_perc(long hand, long board)
+    {		  
+  		long[] oppHands = enum_pos_opp_hands(hand | board); 		  		  
+	    double percentileSum = 0.d;
+	    int percentileCount = 0;
+	  
+	    // Note: oppHands[i] == Turn and River
+		//       oppHands[j] == opponent hands
+				    
+	    for (int i = 0; i < oppHands.length; i++)
+	    {				    	
+	    	getHighestHand(hand, board | oppHands[i]);
+		    double myRating = hRating;
+	    
+	    	int total = 0;
+		    double notBigger = 0.d;
+		    
+		    long tr = oppHands[i];
+		    
+	    	for (int j = 0; j < oppHands.length; j++)
+	    	{ 		   				    				    				    				    				    
+		        if ((tr & oppHands[j]) != 0L)
+		        	continue;
+			    total++;
+			    getHighestHand(oppHands[j], tr | board);
+			    if (hRating >= myRating)
+			    	notBigger++;			    
+	    	}	
+	    	
+		    percentileSum += notBigger / total;
+		    percentileCount++;	    	
+	    }
+
+	    return (percentileSum / percentileCount);
     }
-    
-    	/**
+  	
+  	//average percentile calculator
+  	
+  	/**
+     * Calculates the average percentile cutoff after the flop, considering
+     * potential hand combinations from turn and river
+     * @param hand a long representing my hand
+     * @param board a long representing the board after flop
+     * @return average percentile
+     */ 
+  	public static double pf_avg_perc_multithread(long hand, long board, int numProcesses)
+    {		  
+  		long[] oppHands = enum_pos_opp_hands(hand | board); 		 
+  		Thread[] t = new Thread[numProcesses];
+  		Pf_Avg_Perc_Calc[] apc = new Pf_Avg_Perc_Calc[numProcesses];
+  		
+  		int chunk = 1081 / numProcesses;
+  		chunk--;
+  		int lastIdx = 0;
+  		int finalIdx = numProcesses - 1;
+  		int temp;
+  		for (int i = 0; i < numProcesses; i++)
+  		{
+  			if (i == finalIdx)
+  			{
+  				apc[i] = new Pf_Avg_Perc_Calc(oppHands, lastIdx, 1080, hand, board);
+  				t[i] = new Thread(apc[i]);
+  				t[i].start();  				
+  				break;
+  			}
+  			apc[i] = new Pf_Avg_Perc_Calc(oppHands, lastIdx, temp = (lastIdx + chunk), hand, board);
+  			t[i] = new Thread(apc[i]);
+  			t[i].start();
+  			lastIdx = temp + 1;
+  		}
+  		
+  		double percentileSum = 0.d;
+	    int percentileCount = 0;
+	    	    
+	    try
+	    {
+	    	for (int i = 0; i < numProcesses; i++)
+	    	{
+	    		t[i].join();
+	    		percentileSum += apc[i].getTotal();
+	    		percentileCount += apc[i].getCount();
+	    	}
+	    }
+	    catch(Exception e)
+	    {
+	    	e.printStackTrace();
+	    }	    	    	    
+	    
+	    return (percentileSum / percentileCount);
+    }
+  	
+  	public static double pt_avg_perc(long hand, long board)
+  	{
+  		long[] oppHands = enum_pos_opp_hands(hand | board); 		  		  
+	    double percentileSum = 0.d;
+	    int percentileCount = 0;
+	    
+	    long c, p;	  
+	    c = 0xFFFFFFFFFFFFFL ^ (hand | board); 
+	    for (int i = 0; i < 46; i++)
+	    {			    		    	
+	    	c ^= p = c & -c;
+	    	long boardP = board | p;
+	    	getHighestHand(hand, boardP);
+		    double myRating = hRating;
+	    
+	    	int total = 0;
+		    double notBigger = 0.d;
+		    	    		    
+	    	for (int j = 0; j < oppHands.length; j++)
+	    	{ 		   				    				    				    				    				    
+		        if ((p & oppHands[j]) != 0L)
+		        	continue;
+			    total++;
+			    getHighestHand(oppHands[j], boardP);
+			    if (hRating >= myRating)
+			    	notBigger++;			    
+	    	}	
+	    	
+		    percentileSum += notBigger / total;
+		    percentileCount++;	    	
+	    }
+
+	    return (percentileSum / percentileCount);
+  	}
+  	
+  	public static double pt_avg_perc_multithread(long hand, long board, int numProcesses)
+    {		  
+  		long[] oppHands = enum_pos_opp_hands(hand | board); 		 
+  		long[] river_set = enum_pos_river_cards(hand | board);
+  		
+  		Thread[] t = new Thread[numProcesses];
+  		Pt_Avg_Perc_Calc[] apc = new Pt_Avg_Perc_Calc[numProcesses];
+  		
+  		int chunk = 46 / numProcesses;
+  		chunk--;
+  		int lastIdx = 0;
+  		int finalIdx = numProcesses - 1;
+  		int temp;
+  		for (int i = 0; i < numProcesses; i++)
+  		{
+  			if (i == finalIdx)
+  			{
+  				apc[i] = new Pt_Avg_Perc_Calc(oppHands, river_set, lastIdx, 45, hand, board);
+  				t[i] = new Thread(apc[i]);
+  				t[i].start();  				
+  				break;
+  			}
+  			apc[i] = new Pt_Avg_Perc_Calc(oppHands, river_set, lastIdx, temp = (lastIdx + chunk), hand, board);
+  			t[i] = new Thread(apc[i]);
+  			t[i].start();
+  			lastIdx = temp + 1;
+  		}
+  		
+  		double percentileSum = 0.d;
+	    int percentileCount = 0;
+	    	    
+	    try
+	    {
+	    	for (int i = 0; i < numProcesses; i++)
+	    	{
+	    		t[i].join();
+	    		percentileSum += apc[i].getTotal();
+	    		percentileCount += apc[i].getCount();
+	    	}
+	    }
+	    catch(Exception e)
+	    {
+	    	e.printStackTrace();
+	    }	    	    	    
+	    
+	    return (percentileSum / percentileCount);
+    }
+
+  	/**
+     * This field contains the rating of the return value of
+     * getHighestHand()
+     */
+    private static int hRating;
+  	
+    /**
 	 * @param pHand Player's 2 card hand.
 	 * @param bHand Board's 3-5 cards. must have 3-5 cards
 	 * @return The strongest poker hand that can be made from pHand and bHand.
@@ -354,8 +728,13 @@ public class Precog extends Player
     public static Hand getHighestHand(Hand pHand, Hand bHand)
     {
         return new Hand(getHighestHand(pHand.getBitCards(), bHand.getBitCards()), 5, 5);
-    }
+    }    
     
+    /**
+	 * @param pHand a long representing Player's 2 card hand.
+	 * @param bHand a long representing Board's 3-5 cards. must have 3-5 cards
+	 * @return a long representing strongest poker hand that can be made from pHand and bHand.
+	 */
     public static long getHighestHand(long pHand, long bHand)
     {
         long bigHand = pHand | bHand;
@@ -369,16 +748,25 @@ public class Precog extends Player
             return bigHand;
         
         long highest = 0L;
+        int highestRating = 0;
         for (long candidate : combos)
         {
             if (highest == 0L)
             {
                 highest = candidate;
+                highestRating = rate(candidate);
                 continue;
             }
-            if (rate(candidate) < rate(highest))
+            
+            int candidateRating;
+            
+            if ((candidateRating = rate(candidate)) < highestRating)
+            {
                 highest = candidate;
+                highestRating = candidateRating;
+            }
         }
+        hRating = highestRating;
         return highest;
     }    
     
@@ -386,7 +774,7 @@ public class Precog extends Player
 	 * @param bigHand a long with 6 bits set
 	 * @return All combinations of 5 bits set out of bigHand
      */
-    private static long[] getCombinations6(long bigHand)
+    public static long[] getCombinations6(long bigHand)
     {
         long copy = bigHand;      
         long[] ret = new long[6];        
@@ -405,7 +793,7 @@ public class Precog extends Player
 	 * @param bigHand a long with 7 bits set
 	 * @return All combinations of 5 bits set out of bigHand
      */
-    private static long[] getCombinations7(long bigHand)
+    public static long[] getCombinations7(long bigHand)
     {
         long copy = bigHand;      
         long[] bits = new long[7];
@@ -422,7 +810,7 @@ public class Precog extends Player
         return ret;
     }
     
-    private static int bitCount(long l)
+    public static int bitCount(long l)
     {
         int c;
         for (c = 0; l != 0; c++)
@@ -458,15 +846,31 @@ public class Precog extends Player
      * One Pair
      * 
      * @param h the hand to rate. for now, 5 card hand
-     * @return rating.
+     * @return rating - the lower the stronger
      */    
     private static int rate(Hand h)
-    {
-        assert h.size() == 5 : "rate() passed a hand whose size != 5";
-        
+    {        
         return rate(h.getBitCards());
     }
     
+    /**
+     * There are 7462 distinct poker hands, in these categories (not in order of rank):
+     * 
+     * Straight Flush (includes Royal Flush)
+     * Flush
+     * 
+     * Straight
+     * High Card
+     * 
+     * Full House
+     * Four of a Kind
+     * Three of a Kind
+     * Two Pair
+     * One Pair
+     * 
+     * @param h a long representing the hand to rate.
+     * @return rating - the lower the stronger
+     */ 
     public static int rate(long h)
     {
         int slh = suitlessHand(h);
@@ -484,16 +888,25 @@ public class Precog extends Player
         return hash_values[perfect_hash(multBits(h))];
     }
         
+    /**
+     * Tests if the hand has a flush
+     * @param h a long representing the hand to test
+     * @return true if the hand has a flush
+     */
     private static boolean hasFlush(long h)
     {
-            if ((h | Card.SPADES_MASK) == Card.SPADES_MASK) return true;
-            if ((h | Card.CLUBS_MASK) == Card.CLUBS_MASK) return true;
-            if ((h | Card.DIAMONDS_MASK) == Card.DIAMONDS_MASK) return true;
-            if ((h | Card.HEARTS_MASK) == Card.HEARTS_MASK) return true;
-            return false;
+        if ((h | Card.SPADES_MASK) == Card.SPADES_MASK) return true;
+        if ((h | Card.CLUBS_MASK) == Card.CLUBS_MASK) return true;
+        if ((h | Card.DIAMONDS_MASK) == Card.DIAMONDS_MASK) return true;
+        if ((h | Card.HEARTS_MASK) == Card.HEARTS_MASK) return true;
+        return false;
     }
     
-    // amazing...
+    /**
+     * Hashes the 
+     * @param u
+     * @return
+     */
     private static int perfect_hash(int u)
     {
       int a, b, r;
@@ -508,7 +921,7 @@ public class Precog extends Player
     }
 
     
-    /*returns an index to look at for hand rank
+    /* returns an index to look at for hand rank
      * deprecated since we use perfect hash function instead
      */
     /*private static int binarySearch(int target, int left, int right)
@@ -552,7 +965,7 @@ public class Precog extends Player
     private static int multBits(Hand h)
     {
         assert h.size() == 5 : "multBits(): h size is not 5!!!";
-        return multBits(h.getBitCards());        
+        return multBits(h.getBitCards());
     }
     
     private static int multBits(long h)
@@ -570,7 +983,7 @@ public class Precog extends Player
 
     // 2 3 4 5 6  7  8  9   10  j   q   k   a
     // 2 3 5 7 11 13 17 19  23  29  31  37  41
-    /* access rate_hc[1] through rate_hc[52]
+    /* access rate_hc[0] through rate_hc[51]
      * bitcards to prime -> bc to prime
      */
     private static final int[] bc_to_prime =
@@ -594,8 +1007,10 @@ public class Precog extends Player
      * Chen Formula: devised by Poker Champion William Chen
      * Used for scoring Pocket cards
      * Approximately 5x faster than scorePocket_original
+     * @param h the 2-card hand to score
+     * @return the Chen score
      */
-    private static int scorePocket(Hand h) 
+    public static int scorePocket(Hand h) 
     {
         int indexLow;
         long l;
@@ -604,7 +1019,14 @@ public class Precog extends Player
         return chen_scores[indexLow = bitpos64[(int)((l*0x07EDD5E59A4E28C2L)>>>58)]][bitpos64[(int)((c*0x07EDD5E59A4E28C2L)>>>58)] - indexLow - 1];
     }
     
-    private int scorePocket_original(Hand h)
+    /**
+     * The original uncached version of scorePocket()
+     * Chen Formula: devised by Poker Champion William Chen
+     * Used for scoring Pocket cards
+     * @param h the 2-card hand to score
+     * @return the Chen score
+     */
+    private static int scorePocket_original(Hand h)
     {        
         double score = 0.d;
         boolean paired = false;
@@ -673,8 +1095,11 @@ public class Precog extends Player
         
         return (int)score;
     }
-            
-    private void printChenFormulaArray()
+       
+    /**
+     * Method used to generate the chen_scores triangular array
+     */
+    private static void printChenFormulaArray()
     {
         for (int i = 0; i < 51; i++)
         {
@@ -688,8 +1113,8 @@ public class Precog extends Player
         }
     }
     
-    // this method belongs in Test...too lazy today
-    public boolean verifyScorePocket()
+    /*
+    public static boolean verifyScorePocket()
     {
         for (int i = 0; i < 51; i++)
         {
@@ -705,5 +1130,224 @@ public class Precog extends Player
         }
         return true;
     }
+    */
     
+  //this field is used with percentileRank()
+    //private LinkedList<Hand> cache_poss;
+    
+    /**
+     * Returns the percentile rank of the current hand + board situation
+     * Warning: this should only be used after the flop comes out
+     * @return double between 0 and 1 representing % of hands could beat or tie
+     *
+     * This code is deprecated due to a more optimized version
+    
+    
+    private double percentileRank(GameInfo gi)
+    {
+        Hand remaining = new Hand(0xFFFFFFFFFFFFFL, 52, 52);
+        Hand board = gi.getBoard();
+        for (Card c : board.getCards())
+        {
+            remaining.remove(c);
+        }
+        for (Card c : myHand.getCards())
+        {
+            remaining.remove(c);
+        }
+        
+        int totalOthers = 0;
+        double notbigger = 0.d; //# of hands less than or equal to us
+        Hand myHighest = Precog.getHighestHand(myHand, board);
+        int myRating = rate(myHighest);
+        if (cache_poss == null)
+        {
+            LinkedList<Hand> possibilities = new LinkedList<Hand>();
+            Card[] cards = remaining.getCards();
+            for (int i = 0; i < cards.length-1; i++)
+            {
+                for (int j = i + 1; j < cards.length; j++)
+                {
+                    Hand aHand = new Hand(cards[i], cards[j]);
+                    possibilities.add(aHand);
+                    totalOthers++;
+                    getHighestHand(aHand, board);
+                    if (hRating >= myRating)
+                        notbigger++;
+                }
+            }
+            cache_poss = possibilities;
+        }
+        else
+        {
+            Card last = gi.getRiver() == null ? gi.getTurn() : gi.getRiver();
+            for (ListIterator<Hand> iter = cache_poss.listIterator(); iter.hasNext();)
+            {
+                Hand cur = iter.next();
+                if (cur.has(last))
+                {
+                    iter.remove();
+                    continue;
+                }
+                totalOthers++;
+                getHighestHand(cur, board);
+                if (hRating >= myRating)
+                    notbigger++;
+            }
+        }
+        
+        return (notbigger/totalOthers);
+    }
+    
+    */
+    
+
+
+    /**
+     * Calculates the average percentile cutoff after the flop, considering
+     * potential hand combinations from turn and river
+     * @param hand a long representing my hand
+     * @param board a long representing the board afer flop
+     * @return average percentile
+     * @deprecated
+     *
+     
+    public static double pf_avg_perc(long hand, long board)
+    {
+	  // oppHands is a superset of all the possible opponent hands 
+	  // after we generate turn and river scenarios.
+	  // 47 C 2 = 1081 oppHands
+      
+	  LinkedList<Long> oppHands = enumeratePossibleOpponentHands(hand | board);
+	  
+	  // Now I will generate all possible turn + river cards 	  
+	  // scenarios. This will consist of 2 for loops
+	  // Again, 47 C 2 = 1081 iterations
+	  // I will also keep track of the total sum of percentiles
+	  // as well as the number of percentiles calculated
+	  
+	  double percentileSum = 0.d;
+	  int percentileCount = 0;
+	  
+	  long c1, c2, p1, p2;	  
+	  c1 = 0xFFFFFFFFFFFFFL ^ (hand | board);
+	  int count = bitCount_dense(c1);       
+	  for (int i = 0; i < count - 1; i++)
+	  {
+		c2 = c1 ^= p1 = c1 & -c1;
+	      for (int j = i + 1; j < count; j++)
+		{
+		    c2 ^= p2 = c2 & -c2;
+		    
+		    // tr stands for Turn and River
+		    long tr = p1 | p2;
+		    
+		    // Now that we have generated the turn and river cards,
+		    // we must generate our rating based on it
+		    getHighestHand(hand, board | tr);
+		    double trRating = hRating;
+		    
+		    // Now, we loop through the superset of opponent hands, 
+		    // skipping any that contains turn and river cards
+		    // then rate each one
+		    
+		    int total = 0;
+		    double notBigger = 0.d;
+		    for (long oppHand : oppHands)
+		    {
+		        if ((oppHand & tr) != 0L)
+		        	continue;
+			    total++;
+			    getHighestHand(oppHand, tr | board);
+			    if (hRating >= trRating)
+			    	notBigger++;
+		    }
+			
+		    // Now we simply divide the # of hands worse than ours 
+		    // over the total # of opponent hands to get the percentile
+		    
+		    double trPercentile = notBigger / total;
+		    
+   		    // Now I add the percentile to the percentile Sum
+		    
+		    percentileSum += trPercentile;
+		    percentileCount++;
+		}
+	      
+	  }
+	  return (percentileSum / percentileCount);
+    }
+	 */
+    
+    /**
+     * Calculates the average percentile cutoff after the flop, considering
+     * potential hand combinations from turn and river
+     * @param hand a long representing my hand
+     * @param board a long representing the board after flop
+     * @return average percentile
+     * @deprecated
+     *
+     
+  	public static double pf_avg_perc_nocache(long hand, long board)
+    {		  
+  		long[] oppHands = pf_enum_pos_opp_hands(hand | board); 		  		  
+	    double percentileSum = 0.d;
+	    int percentileCount = 0;
+	  
+	    // Note: oppHands[i] == Turn and River
+		//       oppHands[j] == opponent hands
+				    
+	    for (int i = 0; i < oppHands.length; i++)
+	    {				    	
+	    	getHighestHand(hand, board | oppHands[i]);
+		    double myRating = hRating;
+	    
+	    	int total = 0;
+		    double notBigger = 0.d;
+		    
+	    	for (int j = 0; j < oppHands.length; j++)
+	    	{ 		   				    				    				    				    				    
+		        if ((oppHands[i] & oppHands[j]) != 0L)
+		        	continue;
+			    total++;
+			    getHighestHand(oppHands[j], oppHands[i] | board);
+			    if (hRating >= myRating)
+			    	notBigger++;			    
+	    	}	
+	    	
+		    percentileSum += notBigger / total;
+		    percentileCount++;	    	
+	    }
+
+	    return (percentileSum / percentileCount);
+    }
+    
+    */
+    
+
+    /**
+     * Enumerates all possible 2 card combinations based on the taken cards
+     * @param takenCards cards that cannot be part of the set
+     * @return a linked list of all possible combinations
+     * @deprecated
+     *
+    private static LinkedList<Long> enumeratePossibleOpponentHands(long takenCards)
+    {	  
+		  LinkedList<Long> ret = new LinkedList<Long>();	  
+		  long c1, c2, p1, p2;	  
+		  c1 = 0xFFFFFFFFFFFFFL ^ (takenCards);
+		  int count = bitCount_dense(c1);       
+		  for (int i = 0; i < count - 1; i++)
+		  {
+			c2 = c1 ^= p1 = c1 & -c1;
+		      for (int j = i + 1; j < count; j++)
+			{
+			    c2 ^= p2 = c2 & -c2;
+			    ret.add(p1 | p2);
+			}
+		  }
+		  return ret;	    
+    }
+            
+    */
 }
