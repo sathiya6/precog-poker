@@ -8,6 +8,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import poker.engine.*;
+import poker.engine.Card.Suit;
 import poker.players.*;
 
 /**
@@ -16,73 +17,128 @@ import poker.players.*;
  */
 public class PrecogMain 
 {
-    // adapted version for testing
-    private static double percentileRank2(Hand _board, Hand myHand)
-    {        
-        long hand = myHand.getBitCards();
-        long board = _board.getBitCards();        
         
-        int totalOthers = 0;
-        double notbigger = 0.d; //# of hands less than or equal to us       
-        int myRating = Precog.rate(Precog.getHighestHand(hand, board));        
-                
-        
-        long a = 0xFFFFFFFFFFFFFL ^ (hand | board);
-        long b1, b2, c;            
-
-        int count = Precog.bitCount_dense(a);       
-        for (int i = 0; i < count - 1; i++)
-        {
-            c = a ^= b1 = a & -a; // b1 is the lowest bit                                
-            for (int j = i + 1; j < count; j++)
-            {
-                c ^= b2 = c & -c;                    
-                long aHand = b1 | b2;
-
-                totalOthers++;
-                if (Precog.rate(Precog.getHighestHand(aHand, board)) >= myRating)
-                    notbigger++;
-            }
-        }   
-        
-        return (notbigger/totalOthers);
-    }
-    
     public static void main(String... args)
-    {         
+    {     
+    	Integer i = new Integer(5);
+    	Object o = (Object)i;
+    	if (o instanceof Integer)
+    		System.out.println("true");
+    	
+    	
+    	/*Precog a = new Precog("");
+    	for (int i = -1; i< 21; i++)
+    	{
+    		System.out.println(i + ": " + a.get_cs_tol(i));
+    	}*/
+    	//consolePoker();
+    	/*
+    	Precog p = new Precog("");
+    	Deck deck = new Deck();
+    	
+    	double cs_total = 0;
+    	double count = 0;
+    	for (int i = 0; i < 100; i++)
+    	{
+    		deck.reset();    		
+    		Card h1 = deck.drawCard();
+    		Card h2 = deck.drawCard();    		
+    		Hand h = new Hand(new Card[]{h1,h2});
+    		deck.drawCard();
+    		Card b1 = deck.drawCard();    		
+    		Card b2 = deck.drawCard();    		
+    		Card b3 = deck.drawCard();
+    		//deck.drawCard();
+    		//Card b4 = deck.drawCard();
+    		//deck.drawCard();
+    		//Card b5 = deck.drawCard();
+    		Hand b = new Hand(new Card[]{b1,b2,b3});
+    		cs_total += Precog.pf_avg_perc_multithread(h.getBitCards(), b.getBitCards(), 2);
+    		count++;
+    	}
+    	System.out.println(cs_total / count);
+    	*/
+    	/*
         Precog p = new Precog("");
-        for (int i = 0; i < 10; i++)
-        {
-            Deck deck = new Deck();
+        long totalMil = 0;
+        double avg = 0.d;
+        double avg2 = 0.d;
+        
+        Deck deck = new Deck();
 
-            Card a = deck.drawCard();
-            Card b = deck.drawCard();
-            Card c = deck.drawCard();
-            Card d = deck.drawCard();
-            Card e = deck.drawCard();
-            
-            Card[] boardCards = {a,b,c};
-            Hand flop = new Hand(boardCards);
+        
+        Card h1 = deck.drawCard();
+        Card h2 = deck.drawCard();
+        Card[] handCards = {h1, h2};            
+        
+        Hand hand = new Hand(handCards);
+        
+        System.out.println(hand);
+        System.out.println("Chen Score: " + Precog.scorePocket(hand));        
+        
+        Card a = deck.drawCard();
+        Card b = deck.drawCard();
+        Card c = deck.drawCard();
+        Card d = deck.drawCard();
+        Card e = deck.drawCard();
+        
+        Card[] boardCards = {a,b,c};
+        Hand flop = new Hand(boardCards);
 
-            Card h1 = deck.drawCard();
-            Card h2 = deck.drawCard();
-            Card[] handCards = {h1, h2};
-            Hand hand = new Hand(handCards);
-            
-            double percent = percentileRank2(flop, hand);
-            
-            Hand bigHand = Hand.merge(hand, flop);
-            System.out.println(bigHand);
-            System.out.println(percent);
-        }
+        System.out.println(flop);                      
         
+        avg = Precog.pf_avg_perc_multithread(hand.getBitCards(), flop.getBitCards(), 2);
+        System.out.println("PF average: " + avg);
+                
+        Card[] boardCards2 = {a,b,c,d};         
+        Hand turn = new Hand(boardCards2);
+        System.out.println(turn);
         
-//        Precog a = new Precog("precog");        
-//        Player d = new Stupid("stupid");
-//        Player[] c = {a, d};
-//        Game g = new Game(c);
-//        g.begin();
+        avg = Precog.pt_avg_perc_multithread(hand.getBitCards(), turn.getBitCards(), 2);                                        
         
+        System.out.println("PT average: " + avg);
+        
+        Card[] boardCards3 = {a,b,c,d, e};         
+        Hand river = new Hand(boardCards3);
+        System.out.println(river);
+        
+        avg = Precog.pr_perc_calc(hand.getBitCards(), river.getBitCards());                                        
+        
+        System.out.println("PR average: " + avg);
+        */
+        /*long time = System.currentTimeMillis();        
+        avg = Precog.pf_avg_perc(hand.getBitCards(), flop.getBitCards());
+        //avg2 = percentileRank2(flop, hand);
+        time = System.currentTimeMillis() - time;                        
+        System.out.println(time);
+        System.out.println(avg);
+        
+        time = System.currentTimeMillis();        
+        avg = Precog.pf_avg_perc_multithread(hand.getBitCards(), flop.getBitCards(), 4);
+        //avg2 = percentileRank2(flop, hand);
+        time = System.currentTimeMillis() - time;                        
+        System.out.println(time);
+        System.out.println(avg);*/
+        
+        //System.out.println(Precog.scorePocket(hand));
+        //System.out.println(avg2);
+        //System.out.println(avg);
+        /*  
+        Precog a = new Precog("precog");
+        Player s1 = new Stupid("stupid");
+        Player s2 = new Stupid("stupid");
+        Player s3 = new Stupid("stupid");
+        Player s4 = new Stupid("stupid");
+        Player s5 = new Stupid("stupid");
+        Player s6 = new Stupid("stupid");
+        Player s7 = new Stupid("stupid");
+        Player s8 = new Stupid("stupid");
+        Player s9 = new Stupid("stupid");
+        Player s0 = new Stupid("stupid");
+        Player[] c = {a,s1,s2,s3,s4,s5,s6,s7,s8,s9,s0};
+        Game g = new Game(c);
+        g.begin();
+        */
         //assert false : "assertions on";
         
         /*Card a = new Card(Card.Suit.CLUBS, Card.TWO);
@@ -92,57 +148,75 @@ public class PrecogMain
         Card e = new Card(Card.Suit.CLUBS, Card.SIX);
         Card[] cards = {a,b,c,d,e};
         Hand z = new Hand(cards);
-        System.out.println(Precog.suitlessHand(z.getBitCards()));*/
-        
-        //this stuff i'm just using so i can use the chen formula 
-        //while playing facebook poker
-        /*BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        String s = null;
+        System.out.println(Precog.suitlessHand(z.getBitCards()));*/            
+    }
+    
+    private static void consolePoker()
+    {    	   	
+    	System.out.println("Input the hand:");
+    	
+    	long h1 = getCardFromConsole();
+    	long h2 = getCardFromConsole();
+    	
+    	System.out.println("The Chen Score is : " + Precog.scorePocket(new Hand(h1 | h2, 2, 2)));
+    	
+    	System.out.println("Input the flop:");
+    	
+    	long b1 = getCardFromConsole();
+    	long b2 = getCardFromConsole();
+    	long b3 = getCardFromConsole();
+    	    	
+    	System.out.println("The Average Percentile is: " + Precog.pf_avg_perc(h1 | h2, b1 | b2 | b3));
+    }
+    
+    private static long getCardFromConsole()
+    {
+    	BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+    	
+    	System.out.println("What is the suit? s = spades, c = clubs, h = hearts, d = diamonds");
+    	
+    	String s = null;
         try
         {            
             s = br.readLine();
         } 
         catch (IOException ex)
         {                
-            ex.printStackTrace();
         }
-
-        if (s.equals("stash"))
+        
+        Card.Suit suit = null;
+        
+        if ("h".equals(s))
         {
-            System.out.println("Stashes:");
-            for (Integer p : info.getActivePlayerIds())   
-            {                
-                System.out.println(info.getPlayerName(p) + " " + p + ":  $" + info.getStash(p).getAmount());                
-            }
-            waitForInput();
+        	suit = Suit.HEARTS;
         }
-        else if (s.equals("bets"))
+        else if ("c".equals(s))
         {
-            System.out.println("Bets:");
-            for (Integer p : info.getActivePlayerIds())                
-                System.out.println(info.getPlayerName(p) + " " + p + ":  $" + info.getBet(p).getAmount());
-            waitForInput();
+        	suit = Suit.CLUBS;
         }
-        else if (s.equals("potValue"))
+        else if ("d".equals(s))
         {
-            System.out.println("PotValue:");
-            System.out.println("$" + info.getPotValue().getAmount());
-            waitForInput();
+        	suit = Suit.DIAMONDS;
         }
-        else if (s.equals("minimumBid"))
+        else if ("s".equals(s))
         {
-            System.out.println("Minimum Bid:");
-            System.out.println("$" + info.getMinimumCallAmount().getAmount());
-            waitForInput();
+        	suit  = Suit.SPADES;
         }
-        else if (s.equals("players"))
-        {
-            System.out.println("Active players:");
-            for (Integer p : info.getActivePlayerIds())
-            {
-                System.out.println(info.getPlayerName(p));
-            }
-        }*/
-    
+                        
+        System.out.println("What is the number? value must be between 2 - 14");
+        
+        s = null;
+        try
+        {            
+            s = br.readLine();
+        } 
+        catch (IOException ex)
+        {                
+        }
+        
+        int num = Integer.parseInt(s);
+        
+        return new Card(suit, (byte) num).getValue();
     }
+    
 }
