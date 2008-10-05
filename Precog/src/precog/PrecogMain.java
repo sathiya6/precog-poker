@@ -20,12 +20,12 @@ public class PrecogMain
         
     public static void main(String... args)
     {     
-    	Integer i = new Integer(5);
-    	Object o = (Object)i;
-    	if (o instanceof Integer)
-    		System.out.println("true");
+//    	Integer i = new Integer(5);
+//    	Object o = (Object)i;
+//    	if (o instanceof Integer)
+//    		System.out.println("true");
     	
-    	
+    	Precog p = new Precog("");
     	/*Precog a = new Precog("");
     	for (int i = -1; i< 21; i++)
     	{
@@ -106,14 +106,31 @@ public class PrecogMain
         
         System.out.println("PR average: " + avg);
         */
-        /*long time = System.currentTimeMillis();        
+    	
+    	Deck deck = new Deck();
+    	Card h1 = deck.drawCard();
+        Card h2 = deck.drawCard();
+        Card[] handCards = {h1, h2};            
+        
+        Hand hand = new Hand(handCards);
+    	Card a = deck.drawCard();
+        Card b = deck.drawCard();
+        Card c = deck.drawCard();
+        Card d = deck.drawCard();
+        Card e = deck.drawCard();
+        
+        Card[] boardCards = {a,b,c};
+        Hand flop = new Hand(boardCards);
+        
+    	double avg;
+        long time = System.currentTimeMillis();        
         avg = Precog.pf_avg_perc(hand.getBitCards(), flop.getBitCards());
         //avg2 = percentileRank2(flop, hand);
         time = System.currentTimeMillis() - time;                        
         System.out.println(time);
         System.out.println(avg);
         
-        time = System.currentTimeMillis();        
+        /*time = System.currentTimeMillis();        
         avg = Precog.pf_avg_perc_multithread(hand.getBitCards(), flop.getBitCards(), 4);
         //avg2 = percentileRank2(flop, hand);
         time = System.currentTimeMillis() - time;                        

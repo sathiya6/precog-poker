@@ -36,6 +36,28 @@ public class Precog extends Player
 		44, 24, 15,  8, 23,  7,  6,  5
     };
     
+    // 2 3 4 5 6  7  8  9   10  j   q   k   a
+    // 2 3 5 7 11 13 17 19  23  29  31  37  41
+    /* access rate_hc[0] through rate_hc[51]
+     * bitcards to prime -> bc to prime
+     */
+    private static final int[] bc_to_prime =
+    {
+        2,2,2,2,//deuce
+        3,3,3,3,//3
+        5,5,5,5,//4
+        7,7,7,7,
+        11,11,11,11,
+        13,13,13,13,
+        17,17,17,17,
+        19,19,19,19,
+        23,23,23,23,
+        29,29,29,29,
+        31,31,31,31,
+        37,37,37,37,
+        41,41,41,41
+    };   
+    
     private static short[] flushes = new short[7937];
     private static short[] unique5 = new short[7937];
     //private static int[] products = new int[4888];
@@ -738,12 +760,15 @@ public class Precog extends Player
         long bigHand = pHand | bHand;
         long[] combos;
         int count = bitCount(bigHand);
-        if (count == 7)
-            combos = getCombinations7(bigHand);
-        else if (count == 6)
-            combos = getCombinations6(bigHand);
-        else
-            return bigHand;
+        switch (count)
+        {
+	        case 7:
+	        	combos = getCombinations7(bigHand); break;
+	        case 6: 
+	        	combos = getCombinations6(bigHand); break;
+	        default:
+	        	return bigHand;
+        }
         
         long highest = 0L;
         int highestRating = 0;
@@ -827,25 +852,7 @@ public class Precog extends Player
        }
        return count;
     }
-                  
-    /**
-     * There are 7462 distinct poker hands, in these categories (not in order of rank):
-     * 
-     * Straight Flush (includes Royal Flush)
-     * Flush
-     * 
-     * Straight
-     * High Card
-     * 
-     * Full House
-     * Four of a Kind
-     * Three of a Kind
-     * Two Pair
-     * One Pair
-     * 
-     * @param h the hand to rate. for now, 5 card hand
-     * @return rating - the lower the stronger
-     */    
+
     private static int rate(Hand h)
     {        
         return rate(h.getBitCards());
@@ -901,7 +908,7 @@ public class Precog extends Player
     }
     
     /**
-     * Hashes the 
+     * perfect hash for cactus kev's rate algorithm
      * @param u
      * @return
      */
@@ -917,25 +924,6 @@ public class Precog extends Player
       r  = a ^ hash_adjust[b];
       return r;
     }
-
-    
-    /* returns an index to look at for hand rank
-     * deprecated since we use perfect hash function instead
-     */
-    /*private static int binarySearch(int target, int left, int right)
-    {
-        if (right < left)
-        {
-            return -1;
-        }
-        int mid = (left+right) >>> 1;
-        if (products[mid] == target)
-            return mid;
-        if (products[mid] > target)
-            return binarySearch(target, left, mid-1);
-        else
-            return binarySearch(target, mid+1, right);
-    }*/
     
     /**
      * converts a long in which 52 bits are used to an int in which 13 bits are used.
@@ -966,6 +954,11 @@ public class Precog extends Player
         return multBits(h.getBitCards());
     }
     
+    /**
+     * 
+     * @param h a long with exactly five bits set
+     * @return
+     */
     private static int multBits(long h)
     {
         int result = 1;
@@ -977,29 +970,7 @@ public class Precog extends Player
             bits ^= bit;
         }
         return result;
-    }
-
-    // 2 3 4 5 6  7  8  9   10  j   q   k   a
-    // 2 3 5 7 11 13 17 19  23  29  31  37  41
-    /* access rate_hc[0] through rate_hc[51]
-     * bitcards to prime -> bc to prime
-     */
-    private static final int[] bc_to_prime =
-    {
-        2,2,2,2,//deuce
-        3,3,3,3,//3
-        5,5,5,5,//4
-        7,7,7,7,
-        11,11,11,11,
-        13,13,13,13,
-        17,17,17,17,
-        19,19,19,19,
-        23,23,23,23,
-        29,29,29,29,
-        31,31,31,31,
-        37,37,37,37,
-        41,41,41,41
-    };              
+    }           
     
     /**
      * Chen Formula: devised by Poker Champion William Chen
