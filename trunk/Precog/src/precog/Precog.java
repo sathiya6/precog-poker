@@ -10,6 +10,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.StringTokenizer;
 import poker.engine.*;
 import poker.engine.Money.Currency;
@@ -987,5 +989,76 @@ public class Precog extends Player
         c ^= l = c & -c;               
         return chen_scores[indexLow = bitpos64[(int)((l*0x07EDD5E59A4E28C2L)>>>58)]][bitpos64[(int)((c*0x07EDD5E59A4E28C2L)>>>58)] - indexLow - 1];
     }
+    
+    /*************************************************************************
+     * 
+     * NEURAL NETWORK
+     * 
+     *************************************************************************/
+    
+    private class Perceptron
+    {
+    	public static final int INITIAL_CAPACITY = 10; //default begin size of arraylist
+    	private ArrayList<Perceptron> successors;
+    	private ArrayList<Double> weights;
+    	private double bias;
+    	private double curVal;
+    	private double threshold;
+    	//may need to know parent
+    	
+    	public Perceptron()
+    	{
+    		successors = new ArrayList<Perceptron>(INITIAL_CAPACITY);
+    		weights = new ArrayList<Double>(INITIAL_CAPACITY);
+    		curVal = 0.;
+    		threshold = 0.;
+    		bias = 0.;
+    	}
+    	
+    	//must add to same index
+    	public void addChild(Perceptron p, double _weight)
+    	{
+    		successors.add(p);
+    		weights.add(_weight);
+    	}
+    	
+    	public void evaluate()
+    	{
+    		if (curVal >= threshold) fire();
+    	}
+    	
+    	public void fire()
+    	{
+    		
+    	}
+    	
+    	public void receive(double val)
+    	{
+    		curVal += val;
+    	}
+    	
+    	public void setThreshold(double val)
+    	{
+    		threshold = val;
+    	}
+    	
+    	public void setBias(double val)
+    	{
+    		bias = val;
+    	}
+    	
+    	public double getCurVal()
+    	{
+    		return curVal;
+    	}
+    	
+    	public void reset()
+    	{
+    		curVal = 0.;
+    	}
+    }
+    
+    
+    
        
 }
