@@ -6,10 +6,13 @@
 package precog;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
@@ -92,7 +95,7 @@ public class Precog extends Player
         catch (FileNotFoundException e)
         {
             e.printStackTrace();
-            System.err.println(".pct file(s) not found");
+            System.err.println("needed file(s) not found");
             System.exit(-1);
         }
         catch (IOException e)
@@ -995,6 +998,27 @@ public class Precog extends Player
      * NEURAL NETWORK
      * 
      *************************************************************************/
+   
+    //initialize neural net perceptrons
+    private void initialize_nn(String filename, short[] array) throws IOException
+    {
+        //BufferedReader f = getBR(filename);
+    	BufferedReader f = getBR("precog_weights.nnw"); //neural net weights
+    	StringTokenizer st = new StringTokenizer(f.readLine());
+    	//set weights...
+    	Double.parseDouble(st.nextToken());
+    }
+    
+    //needs work. overwrite or adding?
+    private void saveWeights() throws IOException
+    {
+    	PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter("precog_weights.nnw")));
+    	//write weights..
+	    out.println();
+	    out.close();
+    }
+    
+    
     
     private class Perceptron
     {
@@ -1020,6 +1044,21 @@ public class Precog extends Player
     	{
     		successors.add(p);
     		weights.add(_weight);
+    	}
+    	
+    	public void setWeight(Perceptron p, double _weight)
+    	{
+    		weights.set(successors.indexOf(p), _weight);
+    	}
+    	
+    	public ArrayList<Perceptron> getSuccessors()
+    	{
+    		return successors;
+    	}
+    	
+    	public double getWeight(Perceptron successor)
+    	{
+    		return weights.get(successors.indexOf(successor));
     	}
     	
     	public void evaluate()
