@@ -1042,9 +1042,30 @@ public class Precog extends Player
     	//write weights..
     }
     
+    /**
+     * 1. avg perc
+     * 2. our money amount in
+     * 3. raise amount (money we'd have to put in)
+     * 4. number of starting players in round
+     * 5. number of players left in round
+     * 6. potsize
+     * @author liuk
+     *
+     */
     private class NeuralNet implements Serializable
     {
-    	//perceptrons
+    	Perceptron a1;
+    	Perceptron a2;
+    	Perceptron a3;
+    	Perceptron a4;
+    	Perceptron a5;
+    	Perceptron a6;
+    	Perceptron b1;
+    	Perceptron b2;
+    	Perceptron b3;
+    	Perceptron b4;
+    	Perceptron b5;
+    	Perceptron b6;
     }
     
     private class Perceptron implements Serializable
