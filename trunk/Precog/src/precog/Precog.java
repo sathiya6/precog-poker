@@ -7,12 +7,20 @@ package precog;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
+import java.io.Serializable;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
@@ -998,35 +1006,115 @@ public class Precog extends Player
      * NEURAL NETWORK
      * 
      *************************************************************************/
+    
+   private NeuralNet nn;
    
     //initialize neural net perceptrons
-    private void initialize_nn(String filename, short[] array) throws IOException
+    private void initialize_nn() throws URISyntaxException
     {
         //BufferedReader f = getBR(filename);
-    	BufferedReader f = getBR("precog_weights.nnw"); //neural net weights
-    	StringTokenizer st = new StringTokenizer(f.readLine());
+    	//BufferedReader f = getBR("precog_weights.nnw"); //neural net weights
+    	//StringTokenizer st = new StringTokenizer(f.readLine());
     	//set weights...
-    	Double.parseDouble(st.nextToken());
+    	//Double.parseDouble(st.nextToken());
+    	File f = new File(this.getClass().getResource("precog_weights.nnw").toURI());
+    	FileInputStream fis;
+		try 
+		{
+			fis = new FileInputStream(f);
+			ObjectInputStream ois = new ObjectInputStream(fis);
+	    	nn = (NeuralNet)ois.readObject();
+		} catch (FileNotFoundException e) 
+		{
+			nn = new NeuralNet();
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		} catch (ClassNotFoundException e)
+		{
+			e.printStackTrace();
+		}
+    	
     }
     
     //needs work. overwrite or adding?
-    private void saveWeights() throws IOException
+    private void save() throws IOException, URISyntaxException
     {
-    	PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter("precog_weights.nnw")));
-    	//write weights..
-	    out.println();
-	    out.close();
+    	//PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter("precog_weights.nnw")));
+    	//URL url = this.getClass().getResource("precog_weights.nnw").toURI();
+    	File f = new File(this.getClass().getResource("precog_weights.nnw").toURI());
+    	FileOutputStream fos = new FileOutputStream(f);
+    	ObjectOutputStream oos = new ObjectOutputStream(fos);
+    	oos.writeObject(nn);
+    	oos.close();
     }
     
-    
-    
-    private class Perceptron
+    /**
+     * 1. avg perc
+     * 2. our money amount in
+     * 3. raise amount (money we'd have to put in)
+     * 4. number of starting players in round
+     * 5. number of players left in round
+     * 6. potsize
+     * @author liuk
+     *
+     */
+    private class NeuralNet implements Serializable
     {
-    	public static final int INITIAL_CAPACITY = 10; //default begin size of arraylist
+    	private Perceptron a1;
+    	private Perceptron a2;
+    	private Perceptron a3;
+    	private Perceptron a4;
+    	private Perceptron a5;
+    	private Perceptron a6;
+    	private Perceptron b1;
+    	private Perceptron b2;
+    	private Perceptron b3;
+    	private Perceptron b4;
+    	private Perceptron b5;
+    	private Perceptron b6;
+    	private Perceptron output;
+    	//between 0 and 1 as a percentage of current amount chips owned
+    	
+    	public NeuralNet()
+    	{
+    		a1 = new Perceptron(); a1.randomize();
+    		a2 = new Perceptron(); a2.randomize();
+    		a3 = new Perceptron(); a3.randomize();
+    		a4 = new Perceptron(); a4.randomize();
+    		a5 = new Perceptron(); a5.randomize();
+    		a6 = new Perceptron(); a6.randomize();
+    		b1 = new Perceptron(); b1.randomize();
+    		b2 = new Perceptron(); b2.randomize();
+    		b3 = new Perceptron(); b3.randomize();
+    		b4 = new Perceptron(); b4.randomize();
+    		b5 = new Perceptron(); b5.randomize();
+    		b6 = new Perceptron(); b6.randomize();
+    		output = new Perceptron(); output.randomize();
+    	}
+    	
+    	public double gogogo(double avg_perc, double chips_in, double raise_amt, 
+    			int starting_players, int cur_players, double potsize)
+    	{
+    		return 0.;
+    	}
+    	
+    	public void printWeights()
+    	{
+    		
+    	}
+    	
+    	
+    }
+    
+    private class Perceptron implements Serializable
+    {
+    	public transient static final int INITIAL_CAPACITY = 10; //default begin size of arraylist
+    	//leaning rate
     	private ArrayList<Perceptron> successors;
     	private ArrayList<Double> weights;
     	private double bias;
-    	private double curVal;
+    	private transient double curVal;
     	private double threshold;
     	//may need to know parent
     	
@@ -1038,6 +1126,8 @@ public class Precog extends Player
     		threshold = 0.;
     		bias = 0.;
     	}
+    	
+    	
     	
     	//must add to same index
     	public void addChild(Perceptron p, double _weight)
@@ -1056,6 +1146,11 @@ public class Precog extends Player
     		return successors;
     	}
     	
+    	public String formattedWeights()
+    	{
+    		return "implement this";
+    	}
+    	
     	public double getWeight(Perceptron successor)
     	{
     		return weights.get(successors.indexOf(successor));
@@ -1063,12 +1158,15 @@ public class Precog extends Player
     	
     	public void evaluate()
     	{
-    		if (curVal >= threshold) fire();
+    		if (curVal >= threshold) fire(); //sigmoid...
     	}
     	
     	public void fire()
     	{
-    		
+    		for (Perceptron s : successors)
+    		{ //or perhaps *1 instead of *curVal
+    			s.receive(weights.get(successors.indexOf(s)) * curVal);
+    		}
     	}
     	
     	public void receive(double val)
@@ -1094,6 +1192,11 @@ public class Precog extends Player
     	public void reset()
     	{
     		curVal = 0.;
+    	}
+    	
+    	public void randomize()
+    	{
+    		bias = Math.random(); threshold = Math.random();
     	}
     }
     
