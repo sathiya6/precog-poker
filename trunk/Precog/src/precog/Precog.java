@@ -17,6 +17,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
@@ -230,6 +231,7 @@ public class Precog extends Player
     	
     	try {
 			save();
+			System.out.println("save is successful");
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (URISyntaxException e) {
@@ -1022,12 +1024,32 @@ public class Precog extends Player
     //initialize neural net perceptrons
     private void initialize_nn() throws URISyntaxException
     {
-        //BufferedReader f = getBR(filename);
-    	//BufferedReader f = getBR("precog_weights.nnw"); //neural net weights
-    	//StringTokenizer st = new StringTokenizer(f.readLine());
-    	//set weights...
-    	//Double.parseDouble(st.nextToken());
-    	File f = new File(this.getClass().getResource("precog_weights.nnw").toURI());
+		try 
+		{
+			FileInputStream fis = new FileInputStream("precog_weights.nnw");
+			ObjectInputStream ois = new ObjectInputStream(fis);
+			NeuralNet loadedNN;
+			loadedNN = (NeuralNet)ois.readObject();
+	    	nn = loadedNN;
+		} catch (FileNotFoundException e)
+		{
+			nn = new NeuralNet();
+			System.out.println("filenotfoundexception - creating new nn object");
+			//e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
+    	
+    	
+    	/*URL url = this.getClass().getResource("precog_weights.nnw");
+    	if (url == null)
+    	{
+    		System.out.println("url == null, creating new nn");
+    		nn = new NeuralNet(); return;
+    	}
+    	File f = new File(url.toURI());
     	FileInputStream fis;
 		try 
 		{
@@ -1036,14 +1058,15 @@ public class Precog extends Player
 	    	nn = (NeuralNet)ois.readObject();
 		} catch (FileNotFoundException e) 
 		{
-			nn = new NeuralNet();
+			//nn = new NeuralNet();
+			e.printStackTrace();
 		} catch (IOException e)
 		{
 			e.printStackTrace();
 		} catch (ClassNotFoundException e)
 		{
 			e.printStackTrace();
-		}
+		}*/
     	
     }
     
@@ -1052,8 +1075,8 @@ public class Precog extends Player
     {
     	//PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter("precog_weights.nnw")));
     	//URL url = this.getClass().getResource("precog_weights.nnw").toURI();
-    	File f = new File(this.getClass().getResource("precog_weights.nnw").toURI());
-    	FileOutputStream fos = new FileOutputStream(f);
+    	//File f = new File(this.getClass().getResource("precog_weights.nnw").toURI());
+    	FileOutputStream fos = new FileOutputStream("precog_weights.nnw");
     	ObjectOutputStream oos = new ObjectOutputStream(fos);
     	assert nn != null : "save: nn is null";
     	oos.writeObject(nn);
@@ -1072,7 +1095,11 @@ public class Precog extends Player
      */
     private class NeuralNet implements Serializable
     {
-    	private Perceptron a1;
+    	/**
+		 * 
+		 */
+		private static final long serialVersionUID = -2529332382699798332L;
+		private Perceptron a1;
     	private Perceptron a2;
     	private Perceptron a3;
     	private Perceptron a4;
@@ -1208,7 +1235,11 @@ public class Precog extends Player
     
     private class Perceptron implements Serializable
     {
-    	public transient static final int INITIAL_CAPACITY = 6; //default begin size of arraylist
+    	/**
+		 * 
+		 */
+		private static final long serialVersionUID = 3941480927560107580L;
+		public transient static final int INITIAL_CAPACITY = 6; //default begin size of arraylist
     	//leaning rate
     	private ArrayList<Perceptron> successors;
     	private ArrayList<Double> weights;
