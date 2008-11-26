@@ -20,12 +20,13 @@ public class PrecogMain
         
     public static void main(String... args)
     {     
-//    	Integer i = new Integer(5);
-//    	Object o = (Object)i;
-//    	if (o instanceof Integer)
-//    		System.out.println("true");
-    	
-    	Precog p = new Precog("");
+    	assert false : "assertions on";
+    	Precog a = new Precog("precog");
+        Player s1 = new Stupid("stupid");
+
+        Player[] c = {a, s1};
+        Game g = new Game(c);
+        g.begin();
     	/*Precog a = new Precog("");
     	for (int i = -1; i< 21; i++)
     	{
@@ -107,7 +108,7 @@ public class PrecogMain
         System.out.println("PR average: " + avg);
         */
     	
-    	Deck deck = new Deck();
+    	/*Deck deck = new Deck();
     	Card h1 = deck.drawCard();
         Card h2 = deck.drawCard();
         Card[] handCards = {h1, h2};            
@@ -128,7 +129,7 @@ public class PrecogMain
         //avg2 = percentileRank2(flop, hand);
         time = System.currentTimeMillis() - time;                        
         System.out.println(time);
-        System.out.println(avg);
+        System.out.println(avg);*/
         
         /*time = System.currentTimeMillis();        
         avg = Precog.pf_avg_perc_multithread(hand.getBitCards(), flop.getBitCards(), 4);
@@ -140,23 +141,7 @@ public class PrecogMain
         //System.out.println(Precog.scorePocket(hand));
         //System.out.println(avg2);
         //System.out.println(avg);
-        /*  
-        Precog a = new Precog("precog");
-        Player s1 = new Stupid("stupid");
-        Player s2 = new Stupid("stupid");
-        Player s3 = new Stupid("stupid");
-        Player s4 = new Stupid("stupid");
-        Player s5 = new Stupid("stupid");
-        Player s6 = new Stupid("stupid");
-        Player s7 = new Stupid("stupid");
-        Player s8 = new Stupid("stupid");
-        Player s9 = new Stupid("stupid");
-        Player s0 = new Stupid("stupid");
-        Player[] c = {a,s1,s2,s3,s4,s5,s6,s7,s8,s9,s0};
-        Game g = new Game(c);
-        g.begin();
-        */
-        //assert false : "assertions on";
+        
         
         /*Card a = new Card(Card.Suit.CLUBS, Card.TWO);
         Card b = new Card(Card.Suit.SPADES, Card.THREE);
