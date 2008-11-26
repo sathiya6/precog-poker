@@ -6,21 +6,17 @@
 package precog;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
 import java.io.Serializable;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
@@ -193,6 +189,11 @@ public class Precog extends Player
         populateArrayFromPCT("hash_adjust.pct", hash_adjust);
         populateArrayFromPCT("chenFormula.pct", chen_scores);
         fill_cs_tol();
+        try {
+			initialize_nn();
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+		}
     }
     
     /****************************************************
@@ -225,6 +226,15 @@ public class Precog extends Player
     public void endRound(GameInfo gi) 
     {
     	pf_avg_perc_cache = -3.14;
+    	//change nn weights at this point
+    	
+    	try {
+			save();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+		} //save nn
     }
 
     public void acceptHand(Hand h) 
@@ -1045,6 +1055,7 @@ public class Precog extends Player
     	File f = new File(this.getClass().getResource("precog_weights.nnw").toURI());
     	FileOutputStream fos = new FileOutputStream(f);
     	ObjectOutputStream oos = new ObjectOutputStream(fos);
+    	assert nn != null : "save: nn is null";
     	oos.writeObject(nn);
     	oos.close();
     }
@@ -1091,12 +1102,100 @@ public class Precog extends Player
     		b5 = new Perceptron(); b5.randomize();
     		b6 = new Perceptron(); b6.randomize();
     		output = new Perceptron(); output.randomize();
+    		
+    		a1.addChild(b1, Math.random());
+    		a1.addChild(b2, Math.random());
+    		a1.addChild(b3, Math.random());
+    		a1.addChild(b4, Math.random());
+    		a1.addChild(b5, Math.random());
+    		a1.addChild(b6, Math.random());
+    		
+    		a2.addChild(b1, Math.random());
+    		a2.addChild(b2, Math.random());
+    		a2.addChild(b3, Math.random());
+    		a2.addChild(b4, Math.random());
+    		a2.addChild(b5, Math.random());
+    		a2.addChild(b6, Math.random());
+    		
+    		a3.addChild(b1, Math.random());
+    		a3.addChild(b2, Math.random());
+    		a3.addChild(b3, Math.random());
+    		a3.addChild(b4, Math.random());
+    		a3.addChild(b5, Math.random());
+    		a3.addChild(b6, Math.random());
+    		
+    		a4.addChild(b1, Math.random());
+    		a4.addChild(b2, Math.random());
+    		a4.addChild(b3, Math.random());
+    		a4.addChild(b4, Math.random());
+    		a4.addChild(b5, Math.random());
+    		a4.addChild(b6, Math.random());
+    		
+    		a5.addChild(b1, Math.random());
+    		a5.addChild(b2, Math.random());
+    		a5.addChild(b3, Math.random());
+    		a5.addChild(b4, Math.random());
+    		a5.addChild(b5, Math.random());
+    		a5.addChild(b6, Math.random());
+    		
+    		a6.addChild(b1, Math.random());
+    		a6.addChild(b2, Math.random());
+    		a6.addChild(b3, Math.random());
+    		a6.addChild(b4, Math.random());
+    		a6.addChild(b5, Math.random());
+    		a6.addChild(b6, Math.random());
+    		
+    		b1.addChild(output, Math.random());
+    		b2.addChild(output, Math.random());
+    		b3.addChild(output, Math.random());
+    		b4.addChild(output, Math.random());
+    		b5.addChild(output, Math.random());
+    		b6.addChild(output, Math.random());
     	}
     	
-    	public double gogogo(double avg_perc, double chips_in, double raise_amt, 
+    	/** 1. avg perc
+        * 2. our money amount in
+        * 3. raise amount (money we'd have to put in)
+        * 4. number of starting players in round
+        * 5. number of players left in round
+        * 6. potsize
+        * 
+        * should return a double between 0 and 1. proportion of chips left to raise.
+        * 0 means check/call, a negative number should mean to fold
+        */
+    	public double execute(double avg_perc, double chips_in, double raise_amt, 
     			int starting_players, int cur_players, double potsize)
     	{
-    		return 0.;
+    		resetAll();
+    		a1.receive(avg_perc); a2.receive(chips_in); a3.receive(raise_amt);
+    		a4.receive((double)starting_players); a5.receive((double)cur_players);
+    		a6.receive(potsize);
+    		evaluate(a1, a2, a3, a4, a5, a6);
+    		evaluate(b1, b2, b3, b4, b5, b6);
+    		return output.getCurVal();
+    		//return 0.;
+    	}
+    	
+    	private void evaluate(Perceptron ... a)
+    	{
+    		for (Perceptron p : a) p.evaluate();
+    	}
+    	
+    	private void resetAll()
+    	{
+    		a1.reset();
+    		a2.reset();
+    		a3.reset();
+    		a4.reset();
+    		a5.reset();
+    		a6.reset();
+    		b1.reset();
+    		b2.reset();
+    		b3.reset();
+    		b4.reset();
+    		b5.reset();
+    		b6.reset(); 
+    		output.reset();
     	}
     	
     	public void printWeights()
@@ -1109,10 +1208,12 @@ public class Precog extends Player
     
     private class Perceptron implements Serializable
     {
-    	public transient static final int INITIAL_CAPACITY = 10; //default begin size of arraylist
+    	public transient static final int INITIAL_CAPACITY = 6; //default begin size of arraylist
     	//leaning rate
     	private ArrayList<Perceptron> successors;
     	private ArrayList<Double> weights;
+    	private ArrayList<Perceptron> parents;
+    	private ArrayList<Double> parent_weights;
     	private double bias;
     	private transient double curVal;
     	private double threshold;
@@ -1122,6 +1223,8 @@ public class Precog extends Player
     	{
     		successors = new ArrayList<Perceptron>(INITIAL_CAPACITY);
     		weights = new ArrayList<Double>(INITIAL_CAPACITY);
+    		parents = new ArrayList<Perceptron>(INITIAL_CAPACITY);
+    		parent_weights = new ArrayList<Double>(INITIAL_CAPACITY);
     		curVal = 0.;
     		threshold = 0.;
     		bias = 0.;
@@ -1134,6 +1237,13 @@ public class Precog extends Player
     	{
     		successors.add(p);
     		weights.add(_weight);
+    		p.addParent(this, _weight);
+    	}
+    	
+    	public void addParent(Perceptron p, double _weight)
+    	{
+    		parents.add(p);
+    		parent_weights.add(_weight);
     	}
     	
     	public void setWeight(Perceptron p, double _weight)
@@ -1158,14 +1268,14 @@ public class Precog extends Player
     	
     	public void evaluate()
     	{
-    		if (curVal >= threshold) fire(); //sigmoid...
+    		if (curVal + bias >= threshold) fire(); //sigmoid...
     	}
     	
     	public void fire()
     	{
     		for (Perceptron s : successors)
-    		{ //or perhaps *1 instead of *curVal
-    			s.receive(weights.get(successors.indexOf(s)) * curVal);
+    		{ //multiply by curVal or 1?
+    			s.receive(weights.get(successors.indexOf(s)));
     		}
     	}
     	
@@ -1196,7 +1306,8 @@ public class Precog extends Player
     	
     	public void randomize()
     	{
-    		bias = Math.random(); threshold = Math.random();
+    		bias = 0.;//Math.random(); for now, ignore bias to simplify life
+    		threshold = Math.random();
     	}
     }
     
