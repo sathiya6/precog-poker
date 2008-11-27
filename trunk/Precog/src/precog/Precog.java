@@ -620,8 +620,7 @@ public class Precog extends Player
 
 	    return (percentileSum / percentileCount);
     }
-  	
-  	//average percentile calculator
+  
   	
   	/**
      * Calculates the average percentile cutoff after the flop, considering
@@ -761,7 +760,9 @@ public class Precog extends Player
 
   	/**
      * This field contains the rating of the return value of
-     * getHighestHand()
+     * getHighestHand(). it is accessed only in the single-threaded
+     * avg perc calc methods in this class, so we don't have to worry
+     * about synchronize/volatile
      */
     private static int hRating;
   	
@@ -817,6 +818,7 @@ public class Precog extends Player
         hRating = highestRating;
         return highest;
     }    
+
     
     /**
 	 * @param bigHand a long with 6 bits set
