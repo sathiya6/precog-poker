@@ -37,8 +37,9 @@ public class Pf_Avg_Perc_Calc implements Runnable
 		for (int i = start_idx; i <= end_idx ; i++)
 	    {			    	
 			long posBoard = board | pos_comb_set[i];
-		    double myRating = Precog.rate(Precog.getHighestHand(hand, posBoard));
-	    
+		    int myRating = Precog.rate(Precog.getHighestHand(hand, posBoard));
+			//myRating used to be type double - strange. i changed to int.
+			
 	    	int totalNum = 0;
 		    double notBigger = 0.d;
 		    		    
