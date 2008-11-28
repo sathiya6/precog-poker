@@ -22,12 +22,17 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.StringTokenizer;
 import poker.engine.*;
+import poker.engine.GameState.State;
 import poker.engine.Money.Currency;
 
-public class Precog extends Player
+public class Precog extends Player implements Serializable
 {
-    private Hand myHand;
-    private int myID;
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 8284825252713953453L;
+	private transient Hand myHand;
+    private transient int myID;
     private static final int THREADS = 2;
     
     /**
@@ -81,10 +86,11 @@ public class Precog extends Player
      * will be populated with cached tolerances. access with the chen score + 1
      * so a chen score of -1 will have its corresponding value in cs_tolerance[0]
      */ 
-    private double[] cs_tolerance = new double[22];
+    private transient double[] cs_tolerance = new double[22];
     
-    private double pf_avg_perc_cache;
-    
+    private transient double pf_avg_perc_cache;
+    private transient double pt_avg_perc_cache;
+    private transient double pr_avg_perc_cache;
     
     /****************************************************
      * 					Constructor						*
@@ -203,7 +209,7 @@ public class Precog extends Player
 
     public Action beginTurn(GameInfo gi)
     {
-        switch (gi.getCurrentState())
+        /*switch (gi.getCurrentState())
         {
 	        case FIRSTBET:
 	        	return first_bet(gi);
@@ -215,18 +221,32 @@ public class Precog extends Player
 	        	return fourth_bet(gi);
 	        default:
 	        	throw new IllegalStateException("Precog beginTurn state is messed up");
-        }
+        }*/
+    	switch (gi.getCurrentState())
+    	{
+    	case FIRSTBET: return first_bet(gi);
+    	case SECONDBET:
+    	case THIRDBET:
+    	case FINALBET:
+    		return omni_bet(gi);
+    	default:
+    		throw new IllegalStateException("Precog beginTurn state is messed up");
+    	}
     }
 
     public void beginRound(GameInfo gi)
     {       
     	myID = gi.getId(this);
     	pf_avg_perc_cache = -3.14;
+    	pt_avg_perc_cache = -3.14;
+    	pr_avg_perc_cache = -3.14;
     }
 
     public void endRound(GameInfo gi) 
     {
     	pf_avg_perc_cache = -3.14;
+    	pt_avg_perc_cache = -3.14;
+    	pr_avg_perc_cache = -3.14;
     	//change nn weights at this point
     	
     	try {
@@ -327,18 +347,19 @@ public class Precog extends Player
 			}
 		}    	
     }
-    
+    /*
     //after flop
     private Action second_bet(GameInfo gi)
     {
     	double p;
     	if (pf_avg_perc_cache < 0)
+    	{
     		p = pf_avg_perc_cache = pf_avg_perc_multithread(myHand.getBitCards(), gi.getBoard().getBitCards(), THREADS);
+    		System.out.println("pf avg perc: " + p);
+    	}
     	else
     		p = pf_avg_perc_cache;
     	
-    	System.out.println("pf avg perc: " + p);
-    	    	
    	   	double myStash = gi.getStash(myID).getAmount();
    	   	double mytol = (p - expectPC(gi.getNumberOfPlayersThatStartedThisRound())) * myStash;    	
     	
@@ -347,9 +368,8 @@ public class Precog extends Player
 		{
 			// Remember we don't want to fold if we're the first to go, only later depending on the stake
 			// But should we check or raise?
-			
 			if (mytol >= myStash)
-			{
+			{ //TODO: the above will never eval to true, i think -kevin
 				// if our tolerance is great, bet a third of our stash
 				if (myStash < 1)
 					return new Check(myID);
@@ -369,7 +389,6 @@ public class Precog extends Player
 		else
 		{
 			// not first to raise
-			
 			// let's see what's at stake here
 			double minCall = gi.getMinimumCallAmount().getAmount();
 			double alreadyPutIn = gi.getBet(myID).getAmount();
@@ -409,12 +428,90 @@ public class Precog extends Player
 			else
 			{
 				// since we've raised before, we don't want to raise again
-				
-				
-				
 					return new Call(myID);
 			}
 		}    	    	
+    }
+    */
+    
+    //use for 2nd, 3rd, or 4th bets, not for pre-flop bet
+    private Action omni_bet(GameInfo gi)
+    {
+    	double p;
+    	switch (gi.getCurrentState())
+    	{
+    	case SECONDBET: 
+    		if (pf_avg_perc_cache < 0)
+    		{
+    			p = pf_avg_perc_cache = pf_avg_perc_multithread(myHand.getBitCards(), gi.getBoard().getBitCards(), THREADS);
+        		System.out.println("pf avg perc: " + p);
+    		}
+    		else p = pf_avg_perc_cache;
+    		break;
+    	case THIRDBET:
+    		if (pt_avg_perc_cache < 0)
+    		{
+    			p = pt_avg_perc_cache = pt_avg_perc_multithread(myHand.getBitCards(), gi.getBoard().getBitCards(), THREADS);
+        		System.out.println("pt avg perc: " + p);
+    		}
+    		else p = pt_avg_perc_cache;
+    		break;
+    	case FINALBET:
+    		if (pr_avg_perc_cache < 0)
+    		{
+    			p = pr_avg_perc_cache = pr_perc_calc(myHand.getBitCards(), gi.getBoard().getBitCards());
+        		System.out.println("pr avg perc: " + p);
+    		}
+    		else p = pr_avg_perc_cache;
+    		break;
+    	default: throw new IllegalStateException("state in omni_bet incorrect");
+    	}
+    	
+    	double portion = nn.execute(p, gi.getBet(this).getAmount(), gi.getMinimumCallAmount().getAmount(),
+    			gi.getNumberOfPlayersThatStartedThisRound(), gi.getNumberOfPlayers(), 
+    			gi.getPotValue().getAmount());
+    	if (portion < 0.)
+    	{
+    		return new Fold(myID);
+    	}
+    	if (portion == 0.)
+    	{
+    		Action a;
+    		if (gi.isValid(a = new Check(myID)))
+    			return a;
+    		return new Call(myID);
+    	}
+    	return new Raise(myID, new Money(portion * (gi.getStash(myID).getAmount()
+    			- gi.getMinimumCallAmount().getAmount()), Currency.DOLLARS));
+    }
+    
+    private Action second_bet(GameInfo gi)
+    {
+    	double p;
+    	if (pf_avg_perc_cache < 0)
+    	{
+    		p = pf_avg_perc_cache = pf_avg_perc_multithread(myHand.getBitCards(), gi.getBoard().getBitCards(), THREADS);
+    		System.out.println("pf avg perc: " + p);
+    	}
+    	else
+    		p = pf_avg_perc_cache;
+    	
+    	double portion = nn.execute(p, gi.getBet(this).getAmount(), gi.getMinimumCallAmount().getAmount(),
+    			gi.getNumberOfPlayersThatStartedThisRound(), gi.getNumberOfPlayers(), 
+    			gi.getPotValue().getAmount());
+    	if (portion < 0.)
+    	{
+    		return new Fold(myID);
+    	}
+    	if (portion == 0.)
+    	{
+    		Action a;
+    		if (gi.isValid(a = new Check(myID)))
+    			return a;
+    		return new Call(myID);
+    	}
+    	return new Raise(myID, new Money(portion * (gi.getStash(myID).getAmount() - 
+    			gi.getMinimumCallAmount().getAmount()), Currency.DOLLARS));
     }
     
     //after turn
@@ -1030,9 +1127,9 @@ public class Precog extends Player
 		{
 			FileInputStream fis = new FileInputStream("precog_weights.nnw");
 			ObjectInputStream ois = new ObjectInputStream(fis);
-			NeuralNet loadedNN;
-			loadedNN = (NeuralNet)ois.readObject();
+			NeuralNet loadedNN = (NeuralNet)ois.readObject();
 	    	nn = loadedNN;
+	    	System.out.println("NN loaded from file");
 		} catch (FileNotFoundException e)
 		{
 			nn = new NeuralNet();
@@ -1043,44 +1140,14 @@ public class Precog extends Player
 		}catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		}
-    	
-    	
-    	/*URL url = this.getClass().getResource("precog_weights.nnw");
-    	if (url == null)
-    	{
-    		System.out.println("url == null, creating new nn");
-    		nn = new NeuralNet(); return;
-    	}
-    	File f = new File(url.toURI());
-    	FileInputStream fis;
-		try 
-		{
-			fis = new FileInputStream(f);
-			ObjectInputStream ois = new ObjectInputStream(fis);
-	    	nn = (NeuralNet)ois.readObject();
-		} catch (FileNotFoundException e) 
-		{
-			//nn = new NeuralNet();
-			e.printStackTrace();
-		} catch (IOException e)
-		{
-			e.printStackTrace();
-		} catch (ClassNotFoundException e)
-		{
-			e.printStackTrace();
-		}*/
-    	
     }
     
-    //needs work. overwrite or adding?
+
     private void save() throws IOException, URISyntaxException
     {
-    	//PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter("precog_weights.nnw")));
-    	//URL url = this.getClass().getResource("precog_weights.nnw").toURI();
-    	//File f = new File(this.getClass().getResource("precog_weights.nnw").toURI());
     	FileOutputStream fos = new FileOutputStream("precog_weights.nnw");
     	ObjectOutputStream oos = new ObjectOutputStream(fos);
-    	assert nn != null : "save: nn is null";
+    	if (nn == null) throw new IllegalStateException("nn == null. crap!");
     	oos.writeObject(nn);
     	oos.close();
     }
@@ -1201,7 +1268,7 @@ public class Precog extends Player
     		a6.receive(potsize);
     		evaluate(a1, a2, a3, a4, a5, a6);
     		evaluate(b1, b2, b3, b4, b5, b6);
-    		return output.getCurVal();
+    		return output.outputSmooth();
     		//return 0.;
     	}
     	
@@ -1210,20 +1277,15 @@ public class Precog extends Player
     		for (Perceptron p : a) p.evaluate();
     	}
     	
+    	//makes all curVals 0
     	private void resetAll()
     	{
-    		a1.reset();
-    		a2.reset();
-    		a3.reset();
-    		a4.reset();
-    		a5.reset();
-    		a6.reset();
-    		b1.reset();
-    		b2.reset();
-    		b3.reset();
-    		b4.reset();
-    		b5.reset();
-    		b6.reset(); 
+    		a1.reset(); a2.reset();
+    		a3.reset(); a4.reset();
+    		a5.reset(); a6.reset();
+    		b1.reset(); b2.reset();
+    		b3.reset(); b4.reset();
+    		b5.reset(); b6.reset(); 
     		output.reset();
     	}
     	
@@ -1241,8 +1303,8 @@ public class Precog extends Player
 		 * 
 		 */
 		private static final long serialVersionUID = 3941480927560107580L;
-		public transient static final int INITIAL_CAPACITY = 6; //default begin size of arraylist
-    	//leaning rate
+		private static final int INITIAL_CAPACITY = 6; //default begin size of arraylist
+    	//need learning rate when doing backprop
     	private ArrayList<Perceptron> successors;
     	private ArrayList<Double> weights;
     	private ArrayList<Perceptron> parents;
@@ -1250,7 +1312,6 @@ public class Precog extends Player
     	private double bias;
     	private transient double curVal;
     	private double threshold;
-    	//may need to know parent
     	
     	public Perceptron()
     	{
@@ -1263,7 +1324,18 @@ public class Precog extends Player
     		bias = 0.;
     	}
     	
-    	
+    	/**
+    	 * when getting output from the output field of NeuralNet, use this function
+    	 * to smooth the values (in the form of a sigmoid) so that the return value of
+    	 * this function will be either negative, 0, or if positive, < 1.0
+    	 * 
+    	 * the graph of this function is a sigmoid with asymptotes y = +1 and y = -1
+    	 * and f(0) = 0
+    	 */
+    	public double outputSmooth()
+    	{
+    		return (2. / (1. + Math.exp(-curVal))) - 1.;
+    	}
     	
     	//must add to same index
     	public void addChild(Perceptron p, double _weight)
