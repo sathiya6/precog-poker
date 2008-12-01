@@ -261,7 +261,8 @@ public class Precog extends Player implements Serializable
 
     public void acceptHand(Hand h) 
     {
-        myHand = h;        
+        myHand = h;
+        System.out.println("precog says, my hand is: " + myHand.toString());
     }
 
     /****************************************************
@@ -481,8 +482,16 @@ public class Precog extends Player implements Serializable
     			return a;
     		return new Call(myID);
     	}
-    	return new Raise(myID, new Money(portion * (gi.getStash(myID).getAmount()
-    			- gi.getMinimumCallAmount().getAmount()), Currency.DOLLARS));
+    	double myStashAmt = gi.getStash(myID).getAmount();
+    	double addtlAmt = (gi.getMinimumCallAmount().getAmount() - gi.getBet(this).getAmount());
+    	if (myStashAmt <= addtlAmt)
+    	{
+    		Action a;
+    		if (gi.isValid(a = new Check(myID)))
+    			return a;
+    		return new Call(myID);
+    	}
+    	return new Raise(myID, new Money(portion * (myStashAmt - addtlAmt), Currency.DOLLARS));
     }
     
     private Action second_bet(GameInfo gi)
@@ -1122,13 +1131,14 @@ public class Precog extends Player implements Serializable
    
     //initialize neural net perceptrons
     private void initialize_nn() throws URISyntaxException
-    {
+    {    	
 		try 
 		{
 			FileInputStream fis = new FileInputStream("precog_weights.nnw");
 			ObjectInputStream ois = new ObjectInputStream(fis);
 			NeuralNet loadedNN = (NeuralNet)ois.readObject();
 	    	nn = loadedNN;
+	    	nn.printWeights();
 	    	System.out.println("NN loaded from file");
 		} catch (FileNotFoundException e)
 		{
@@ -1151,272 +1161,5 @@ public class Precog extends Player implements Serializable
     	oos.writeObject(nn);
     	oos.close();
     }
-    
-    /**
-     * 1. avg perc
-     * 2. our money amount in
-     * 3. raise amount (money we'd have to put in)
-     * 4. number of starting players in round
-     * 5. number of players left in round
-     * 6. potsize
-     * @author liuk
-     *
-     */
-    private class NeuralNet implements Serializable
-    {
-    	/**
-		 * 
-		 */
-		private static final long serialVersionUID = -2529332382699798332L;
-		private Perceptron a1;
-    	private Perceptron a2;
-    	private Perceptron a3;
-    	private Perceptron a4;
-    	private Perceptron a5;
-    	private Perceptron a6;
-    	private Perceptron b1;
-    	private Perceptron b2;
-    	private Perceptron b3;
-    	private Perceptron b4;
-    	private Perceptron b5;
-    	private Perceptron b6;
-    	private Perceptron output;
-    	//between 0 and 1 as a percentage of current amount chips owned
-    	
-    	public NeuralNet()
-    	{
-    		a1 = new Perceptron(); a1.randomize();
-    		a2 = new Perceptron(); a2.randomize();
-    		a3 = new Perceptron(); a3.randomize();
-    		a4 = new Perceptron(); a4.randomize();
-    		a5 = new Perceptron(); a5.randomize();
-    		a6 = new Perceptron(); a6.randomize();
-    		b1 = new Perceptron(); b1.randomize();
-    		b2 = new Perceptron(); b2.randomize();
-    		b3 = new Perceptron(); b3.randomize();
-    		b4 = new Perceptron(); b4.randomize();
-    		b5 = new Perceptron(); b5.randomize();
-    		b6 = new Perceptron(); b6.randomize();
-    		output = new Perceptron(); output.randomize();
-    		
-    		a1.addChild(b1, Math.random());
-    		a1.addChild(b2, Math.random());
-    		a1.addChild(b3, Math.random());
-    		a1.addChild(b4, Math.random());
-    		a1.addChild(b5, Math.random());
-    		a1.addChild(b6, Math.random());
-    		
-    		a2.addChild(b1, Math.random());
-    		a2.addChild(b2, Math.random());
-    		a2.addChild(b3, Math.random());
-    		a2.addChild(b4, Math.random());
-    		a2.addChild(b5, Math.random());
-    		a2.addChild(b6, Math.random());
-    		
-    		a3.addChild(b1, Math.random());
-    		a3.addChild(b2, Math.random());
-    		a3.addChild(b3, Math.random());
-    		a3.addChild(b4, Math.random());
-    		a3.addChild(b5, Math.random());
-    		a3.addChild(b6, Math.random());
-    		
-    		a4.addChild(b1, Math.random());
-    		a4.addChild(b2, Math.random());
-    		a4.addChild(b3, Math.random());
-    		a4.addChild(b4, Math.random());
-    		a4.addChild(b5, Math.random());
-    		a4.addChild(b6, Math.random());
-    		
-    		a5.addChild(b1, Math.random());
-    		a5.addChild(b2, Math.random());
-    		a5.addChild(b3, Math.random());
-    		a5.addChild(b4, Math.random());
-    		a5.addChild(b5, Math.random());
-    		a5.addChild(b6, Math.random());
-    		
-    		a6.addChild(b1, Math.random());
-    		a6.addChild(b2, Math.random());
-    		a6.addChild(b3, Math.random());
-    		a6.addChild(b4, Math.random());
-    		a6.addChild(b5, Math.random());
-    		a6.addChild(b6, Math.random());
-    		
-    		b1.addChild(output, Math.random());
-    		b2.addChild(output, Math.random());
-    		b3.addChild(output, Math.random());
-    		b4.addChild(output, Math.random());
-    		b5.addChild(output, Math.random());
-    		b6.addChild(output, Math.random());
-    	}
-    	
-    	/** 1. avg perc
-        * 2. our money amount in
-        * 3. raise amount (money we'd have to put in)
-        * 4. number of starting players in round
-        * 5. number of players left in round
-        * 6. potsize
-        * 
-        * should return a double between 0 and 1. proportion of chips left to raise.
-        * 0 means check/call, a negative number should mean to fold
-        */
-    	public double execute(double avg_perc, double chips_in, double raise_amt, 
-    			int starting_players, int cur_players, double potsize)
-    	{
-    		resetAll();
-    		a1.receive(avg_perc); a2.receive(chips_in); a3.receive(raise_amt);
-    		a4.receive((double)starting_players); a5.receive((double)cur_players);
-    		a6.receive(potsize);
-    		evaluate(a1, a2, a3, a4, a5, a6);
-    		evaluate(b1, b2, b3, b4, b5, b6);
-    		return output.outputSmooth();
-    		//return 0.;
-    	}
-    	
-    	private void evaluate(Perceptron ... a)
-    	{
-    		for (Perceptron p : a) p.evaluate();
-    	}
-    	
-    	//makes all curVals 0
-    	private void resetAll()
-    	{
-    		a1.reset(); a2.reset();
-    		a3.reset(); a4.reset();
-    		a5.reset(); a6.reset();
-    		b1.reset(); b2.reset();
-    		b3.reset(); b4.reset();
-    		b5.reset(); b6.reset(); 
-    		output.reset();
-    	}
-    	
-    	public void printWeights()
-    	{
-    		
-    	}
-    	
-    	
-    }
-    
-    private class Perceptron implements Serializable
-    {
-    	/**
-		 * 
-		 */
-		private static final long serialVersionUID = 3941480927560107580L;
-		private static final int INITIAL_CAPACITY = 6; //default begin size of arraylist
-    	//need learning rate when doing backprop
-    	private ArrayList<Perceptron> successors;
-    	private ArrayList<Double> weights;
-    	private ArrayList<Perceptron> parents;
-    	private ArrayList<Double> parent_weights;
-    	private double bias;
-    	private transient double curVal;
-    	private double threshold;
-    	
-    	public Perceptron()
-    	{
-    		successors = new ArrayList<Perceptron>(INITIAL_CAPACITY);
-    		weights = new ArrayList<Double>(INITIAL_CAPACITY);
-    		parents = new ArrayList<Perceptron>(INITIAL_CAPACITY);
-    		parent_weights = new ArrayList<Double>(INITIAL_CAPACITY);
-    		curVal = 0.;
-    		threshold = 0.;
-    		bias = 0.;
-    	}
-    	
-    	/**
-    	 * when getting output from the output field of NeuralNet, use this function
-    	 * to smooth the values (in the form of a sigmoid) so that the return value of
-    	 * this function will be either negative, 0, or if positive, < 1.0
-    	 * 
-    	 * the graph of this function is a sigmoid with asymptotes y = +1 and y = -1
-    	 * and f(0) = 0
-    	 */
-    	public double outputSmooth()
-    	{
-    		return (2. / (1. + Math.exp(-curVal))) - 1.;
-    	}
-    	
-    	//must add to same index
-    	public void addChild(Perceptron p, double _weight)
-    	{
-    		successors.add(p);
-    		weights.add(_weight);
-    		p.addParent(this, _weight);
-    	}
-    	
-    	public void addParent(Perceptron p, double _weight)
-    	{
-    		parents.add(p);
-    		parent_weights.add(_weight);
-    	}
-    	
-    	public void setWeight(Perceptron p, double _weight)
-    	{
-    		weights.set(successors.indexOf(p), _weight);
-    	}
-    	
-    	public ArrayList<Perceptron> getSuccessors()
-    	{
-    		return successors;
-    	}
-    	
-    	public String formattedWeights()
-    	{
-    		return "implement this";
-    	}
-    	
-    	public double getWeight(Perceptron successor)
-    	{
-    		return weights.get(successors.indexOf(successor));
-    	}
-    	
-    	public void evaluate()
-    	{
-    		if (curVal + bias >= threshold) fire(); //sigmoid...
-    	}
-    	
-    	public void fire()
-    	{
-    		for (Perceptron s : successors)
-    		{ //multiply by curVal or 1?
-    			s.receive(weights.get(successors.indexOf(s)));
-    		}
-    	}
-    	
-    	public void receive(double val)
-    	{
-    		curVal += val;
-    	}
-    	
-    	public void setThreshold(double val)
-    	{
-    		threshold = val;
-    	}
-    	
-    	public void setBias(double val)
-    	{
-    		bias = val;
-    	}
-    	
-    	public double getCurVal()
-    	{
-    		return curVal;
-    	}
-    	
-    	public void reset()
-    	{
-    		curVal = 0.;
-    	}
-    	
-    	public void randomize()
-    	{
-    		bias = 0.;//Math.random(); for now, ignore bias to simplify life
-    		threshold = Math.random();
-    	}
-    }
-    
-    
-    
        
 }
