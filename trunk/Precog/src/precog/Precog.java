@@ -27,9 +27,6 @@ import poker.engine.Money.Currency;
 
 public class Precog extends Player implements Serializable
 {
-    /**
-	 * 
-	 */
 	private static final long serialVersionUID = 8284825252713953453L;
 	private transient Hand myHand;
     private transient int myID;
@@ -39,7 +36,7 @@ public class Precog extends Player implements Serializable
      *  Perfect Hashtable for bitposition. This table returns the position of the bit set.
      *  Usage: bitpos64[(int)((bit*0x07EDD5E59A4E28C2L)>>>58)];
      */
-    private static int[] bitpos64 =
+    private static final int[] bitpos64 =
     {
 		63,  0, 58,  1, 59, 47, 53,  2,
 		60, 39, 48, 27, 54, 33, 42,  3,
@@ -91,6 +88,7 @@ public class Precog extends Player implements Serializable
     private transient double pf_avg_perc_cache;
     private transient double pt_avg_perc_cache;
     private transient double pr_avg_perc_cache;
+    private transient LinkedList<Double> portions_cache; //pertains to a single round
     
     /****************************************************
      * 					Constructor						*
@@ -240,14 +238,60 @@ public class Precog extends Player implements Serializable
     	pf_avg_perc_cache = -3.14;
     	pt_avg_perc_cache = -3.14;
     	pr_avg_perc_cache = -3.14;
+    	portions_cache = new LinkedList<Double>();
     }
 
     public void endRound(GameInfo gi) 
     {
-    	pf_avg_perc_cache = -3.14;
-    	pt_avg_perc_cache = -3.14;
-    	pr_avg_perc_cache = -3.14;
     	//change nn weights at this point
+    	/* mean squared error: sum of (Desired n - Output n)^2. in our case we only have one
+    	 * output, so MSE = (desired portion - output portion)^2
+    	 */
+    	boolean iWon = false;
+    	for (Integer i : gi.getWinnerIDs())
+    	{
+    		if (i == myID)
+    		{
+    			iWon = true; break;
+    		}
+    	}
+    	if (!portions_cache.isEmpty())
+    	{
+    		double actual_out = portions_cache.getLast();
+    		double desired_out;
+    		if (iWon)
+    		{
+    			if (gi.getActivePlayerIds().size() > 1)
+    				desired_out = (actual_out + 1.) / 2.;
+    			else
+    				desired_out = actual_out;
+    		}
+    		else
+    		{ 
+    			if (gi.getActivePlayerIds().contains(myID))
+    				desired_out = (actual_out - 1.) / 2.;
+    			else //lost from folding
+    			{
+    				double last_avg_perc = -0.2;
+    				if (pf_avg_perc_cache > 0)
+    					last_avg_perc = pf_avg_perc_cache;
+    				if (pt_avg_perc_cache > 0)
+    					last_avg_perc = pt_avg_perc_cache;
+    				if (pr_avg_perc_cache > 0)
+    					last_avg_perc = pr_avg_perc_cache;
+
+    				if (last_avg_perc > expectPC(gi.getNumberOfPlayersThatStartedThisRound()))
+    					desired_out = (actual_out + 1.) / 2.;
+    				else
+    					desired_out = actual_out;
+    			}
+    		}
+    		if (actual_out != desired_out)
+    		{
+    			nn.adjustNN(actual_out, desired_out);
+    			System.out.println("nn weights adjusted.");
+    		}
+    	}
     	
     	try {
 			save();
@@ -256,13 +300,13 @@ public class Precog extends Player implements Serializable
 			e.printStackTrace();
 		} catch (URISyntaxException e) {
 			e.printStackTrace();
-		} //save nn
+		}
     }
 
     public void acceptHand(Hand h) 
     {
         myHand = h;
-        System.out.println("precog says, my hand is: " + myHand.toString());
+        System.out.println(this.toString() + " says, my hand is: " + myHand.toString());
     }
 
     /****************************************************
@@ -435,7 +479,10 @@ public class Precog extends Player implements Serializable
     }
     */
     
-    //use for 2nd, 3rd, or 4th bets, not for pre-flop bet
+    /**
+     * use for 2nd, 3rd, or 4th bets, not for pre-flop bet
+     * TODO: fix so that if others raise, we don't keep raising. 
+     */
     private Action omni_bet(GameInfo gi)
     {
     	double p;
@@ -471,11 +518,12 @@ public class Precog extends Player implements Serializable
     	double portion = nn.execute(p, gi.getBet(this).getAmount(), gi.getMinimumCallAmount().getAmount(),
     			gi.getNumberOfPlayersThatStartedThisRound(), gi.getNumberOfPlayers(), 
     			gi.getPotValue().getAmount());
+    	portions_cache.add(portion);
     	if (portion < 0.)
     	{
     		return new Fold(myID);
     	}
-    	if (portion == 0.)
+    	if (portion < 0.02) //to prevent two precogs from infinite betting loop
     	{
     		Action a;
     		if (gi.isValid(a = new Check(myID)))
@@ -484,6 +532,13 @@ public class Precog extends Player implements Serializable
     	}
     	double myStashAmt = gi.getStash(myID).getAmount();
     	double addtlAmt = (gi.getMinimumCallAmount().getAmount() - gi.getBet(this).getAmount());
+    	if (addtlAmt < 1.) //prevent two precogs from infinite betting loop
+    	{
+    		Action a;
+    		if (gi.isValid(a = new Check(myID)))
+    			return a;
+    		return new Call(myID);
+    	}
     	if (myStashAmt <= addtlAmt)
     	{
     		Action a;
@@ -864,11 +919,16 @@ public class Precog extends Player implements Serializable
 	    return (percentileSum / percentileCount);
     }
 
+    /****************************************************
+     * 				Utility Methods	   			        *
+     ****************************************************/ 
+  	
   	/**
      * This field contains the rating of the return value of
      * getHighestHand(). it is accessed only in the single-threaded
      * avg perc calc methods in this class, so we don't have to worry
-     * about synchronize/volatile
+     * about synchronize/volatile... unless two precogs are playing,
+     * both using single-threaded avg perc calc. ugh.
      */
     private static int hRating;
   	
@@ -1121,20 +1181,24 @@ public class Precog extends Player implements Serializable
         return chen_scores[indexLow = bitpos64[(int)((l*0x07EDD5E59A4E28C2L)>>>58)]][bitpos64[(int)((c*0x07EDD5E59A4E28C2L)>>>58)] - indexLow - 1];
     }
     
-    /*************************************************************************
-     * 
-     * NEURAL NETWORK
-     * 
+    /************************************************************************* 
+     *                         NEURAL NETWORK
      *************************************************************************/
-    
-   private NeuralNet nn;
+   
+    private NeuralNet nn;
    
     //initialize neural net perceptrons
     private void initialize_nn() throws URISyntaxException
     {    	
 		try 
 		{
-			FileInputStream fis = new FileInputStream("precog_weights.nnw");
+			String file_name;
+	    	if ("precog-A".equals(this.toString()))
+	    	{
+	    		file_name = "precog_weights-A.nnw";
+	    	}
+	    	else file_name = "precog_weights-B.nnw";
+			FileInputStream fis = new FileInputStream(file_name);//("precog_weights.nnw");
 			ObjectInputStream ois = new ObjectInputStream(fis);
 			NeuralNet loadedNN = (NeuralNet)ois.readObject();
 	    	nn = loadedNN;
@@ -1144,7 +1208,6 @@ public class Precog extends Player implements Serializable
 		{
 			nn = new NeuralNet();
 			System.out.println("filenotfoundexception - creating new nn object");
-			//e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}catch (ClassNotFoundException e) {
@@ -1155,11 +1218,17 @@ public class Precog extends Player implements Serializable
 
     private void save() throws IOException, URISyntaxException
     {
-    	FileOutputStream fos = new FileOutputStream("precog_weights.nnw");
+    	String file_name;
+    	if ("precog-A".equals(this.toString()))
+    	{
+    		file_name = "precog_weights-A.nnw";
+    	}
+    	else file_name = "precog_weights-B.nnw";
+    	FileOutputStream fos = new FileOutputStream(file_name);//("precog_weights.nnw");
     	ObjectOutputStream oos = new ObjectOutputStream(fos);
     	if (nn == null) throw new IllegalStateException("nn == null. crap!");
     	oos.writeObject(nn);
     	oos.close();
     }
-       
+    
 }

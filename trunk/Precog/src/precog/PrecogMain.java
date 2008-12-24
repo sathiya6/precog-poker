@@ -16,12 +16,16 @@ public class PrecogMain
     public static void main(String... args)
     {     
     	assert false : "assertions on";
-    	Precog a = new Precog("precog");
-        Player s1 = new Stupid("stupid");
+    	Precog a = new Precog("precog-A");
+        Player s1 = new Precog("precog-B");
 
         Player[] c = {a, s1};
+        while (true)
+        {
         Game g = new Game(c);
-        g.begin();        
+        g.begin();     
+        }
+        
     }
     
     private static void consolePoker()
