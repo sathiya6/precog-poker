@@ -7,31 +7,45 @@ package precog;
 import java.io.Serializable;
 import java.util.ArrayList;
 
-public class Perceptron implements Serializable
+public class Neuron implements Serializable
 {
 
 	private static final long serialVersionUID = 3941480927560107580L;
 	private static final int INITIAL_CAPACITY = 6; //default begin size of arraylist
 	//need learning rate when doing backprop
-	private ArrayList<Perceptron> successors;
+	private ArrayList<Neuron> successors;
 	private ArrayList<Double> weights;
-	private ArrayList<Perceptron> parents;
+	private ArrayList<Neuron> parents; 
 	private ArrayList<Double> parent_weights;
 	private double bias;
 	private transient double curVal;
-	private double threshold;
+	private double threshold; //important for this to be in interval [0,1) 
 	private String name;
+	private int number;
 	
-	public Perceptron(String _name)
+	private transient double last_output;
+	
+	public Neuron(String _name, int _number)
 	{
-		successors = new ArrayList<Perceptron>(INITIAL_CAPACITY);
+		successors = new ArrayList<Neuron>(INITIAL_CAPACITY);
 		weights = new ArrayList<Double>(INITIAL_CAPACITY);
-		parents = new ArrayList<Perceptron>(INITIAL_CAPACITY);
+		parents = new ArrayList<Neuron>(INITIAL_CAPACITY);
 		parent_weights = new ArrayList<Double>(INITIAL_CAPACITY);
 		curVal = 0.;
 		threshold = 0.;
 		bias = 0.;
 		name = _name;
+		number = _number;
+	}
+	
+	public int getNumber()
+	{
+		return number;
+	}
+	
+	public double getLastOutput()
+	{
+		return last_output;
 	}
 	
 	/**
@@ -50,28 +64,43 @@ public class Perceptron implements Serializable
 		return smoothed;
 	}
 	
+	/**
+	 * sigmoid function with asymptotes y=0 and y=1. f(0) = 1/2
+	 * @param value value to be smoothed
+	 * @return double between 0 and 1
+	 */
+	public static double sigmoidSmooth(double value)
+	{
+		return (1. / (1. + Math.exp(-value)));
+	}
+	
 	//must add to same index
-	public void addChild(Perceptron p, double _weight)
+	public void addChild(Neuron p, double _weight)
 	{
 		successors.add(p);
 		weights.add(_weight);
 		p.addParent(this, _weight);
 	}
 	
-	public void addParent(Perceptron p, double _weight)
+	public void addParent(Neuron p, double _weight)
 	{
 		parents.add(p);
 		parent_weights.add(_weight);
 	}
 	
-	public void setWeight(Perceptron p, double _weight)
+	public void setWeight(Neuron p, double _weight)
 	{
 		weights.set(successors.indexOf(p), _weight);
 	}
 	
+	public void setParentWeight(Neuron p, double _weight)
+	{
+		parent_weights.set(parents.indexOf(p), _weight);
+	}
+	
 	public void printWeights()
 	{
-		for (Perceptron p : successors)
+		for (Neuron p : successors)
 		{
 			System.out.println(this.name + " to " + p.getName() + " weight: " + weights.get(successors.indexOf(p)));
 		}
@@ -82,17 +111,17 @@ public class Perceptron implements Serializable
 		return name;
 	}
 	
-	public ArrayList<Perceptron> getSuccessors()
+	public ArrayList<Neuron> getSuccessors()
 	{
 		return successors;
 	}
 	
 	public String formattedWeights()
 	{
-		return "implement this";
+		return "implement this (Perceptron.formattedWeights)";
 	}
 	
-	public double getWeight(Perceptron successor)
+	public double getWeight(Neuron successor)
 	{
 		return weights.get(successors.indexOf(successor));
 	}
@@ -100,14 +129,16 @@ public class Perceptron implements Serializable
 	
 	public void evaluate()
 	{
-		if (curVal + bias >= threshold) fire(); //sigmoid...
+		last_output = sigmoidSmooth(curVal + bias);
+		if (sigmoidSmooth(curVal + bias) >= threshold) fire(); //sigmoid...
+		else last_output = 0.;
 	}
 	
 	public void fire()
 	{
-		for (Perceptron s : successors)
-		{ //multiply by curVal or 1?
-			s.receive(weights.get(successors.indexOf(s)));
+		for (Neuron s : successors)
+		{ //multiply by curVal. rationale: transmit strength of confidence
+			s.receive(weights.get(successors.indexOf(s)) * last_output);
 		}
 	}
 	
@@ -139,6 +170,24 @@ public class Perceptron implements Serializable
 	public void randomize()
 	{
 		bias = 0.;//Math.random(); for now, ignore bias to simplify life
-		threshold = Math.random();
+		threshold = 0.8; //abitrary value... //Math.random();
+	}
+	
+	public void init_input_node()
+	{
+		bias = 0.0;
+		threshold = 0.0;
+	}
+	
+	public void init_hidden_node()
+	{
+		bias = 0.;
+		threshold = 0.8;
+	}
+	
+	public void init_output_node()
+	{
+		bias = 0.;
+		threshold = 0.8;
 	}
 }

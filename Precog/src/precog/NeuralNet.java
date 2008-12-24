@@ -5,6 +5,7 @@
 package precog;
 
 import java.io.Serializable;
+import java.util.LinkedList;
 
 
 public class NeuralNet implements Serializable
@@ -13,19 +14,21 @@ public class NeuralNet implements Serializable
 	 * 
 	 */
 	private static final long serialVersionUID = -2529332382699798332L;
-	private Perceptron a1;
-	private Perceptron a2;
-	private Perceptron a3;
-	private Perceptron a4;
-	private Perceptron a5;
-	private Perceptron a6;
-	private Perceptron b1;
-	private Perceptron b2;
-	private Perceptron b3;
-	private Perceptron b4;
-	private Perceptron b5;
-	private Perceptron b6;
-	private Perceptron output;
+    private static final double LRATE = 5.; //learning rate
+    private static final double MAX_MSE = 0.01;
+	private Neuron a1;
+	private Neuron a2;
+	private Neuron a3;
+	private Neuron a4;
+	private Neuron a5;
+	private Neuron a6;
+	private Neuron b1;
+	private Neuron b2;
+	private Neuron b3;
+	private Neuron b4;
+	private Neuron b5;
+	private Neuron b6;
+	private Neuron output;
 	//between 0 and 1 as a percentage of current amount chips owned
 	
 	public NeuralNet()
@@ -38,19 +41,19 @@ public class NeuralNet implements Serializable
 	    * 5. number of players left in round
 	    * 6. potsize
 	    */
-		a1 = new Perceptron("a1-avg-perc"); a1.randomize();
-		a2 = new Perceptron("a2-our-money-in"); a2.randomize();
-		a3 = new Perceptron("a3-raise-amt"); a3.randomize();
-		a4 = new Perceptron("a4-num-start-pl"); a4.randomize();
-		a5 = new Perceptron("a5-num-left-pl"); a5.randomize();
-		a6 = new Perceptron("a6-potsize"); a6.randomize();
-		b1 = new Perceptron("b1"); b1.randomize();
-		b2 = new Perceptron("b2"); b2.randomize();
-		b3 = new Perceptron("b3"); b3.randomize();
-		b4 = new Perceptron("b4"); b4.randomize();
-		b5 = new Perceptron("b5"); b5.randomize();
-		b6 = new Perceptron("b6"); b6.randomize();
-		output = new Perceptron("output"); output.randomize();
+		a1 = new Neuron("a1-avg-perc", 1); a1.init_input_node();
+		a2 = new Neuron("a2-our-money-in", 2); a2.init_input_node();
+		a3 = new Neuron("a3-raise-amt", 3); a3.init_input_node();
+		a4 = new Neuron("a4-num-start-pl", 4); a4.init_input_node();
+		a5 = new Neuron("a5-num-left-pl", 5); a5.init_input_node();
+		a6 = new Neuron("a6-potsize", 6); a6.init_input_node();
+		b1 = new Neuron("b1", 1); b1.init_hidden_node();
+		b2 = new Neuron("b2", 2); b2.init_hidden_node();
+		b3 = new Neuron("b3", 3); b3.init_hidden_node();
+		b4 = new Neuron("b4", 4); b4.init_hidden_node();
+		b5 = new Neuron("b5", 5); b5.init_hidden_node();
+		b6 = new Neuron("b6", 6); b6.init_hidden_node();
+		output = new Neuron("output", 1337); output.init_output_node();
 		
 		a1.addChild(b1, Math.random());
 		a1.addChild(b2, Math.random());
@@ -125,9 +128,59 @@ public class NeuralNet implements Serializable
 		//return 0.;
 	}
 	
-	private void evaluate(Perceptron ... a)
+    /**
+     * maxMSE = max allowable mean squared error.
+     */
+	 protected void adjustNN(double actual_output, double desired_output)
+	 {
+	    double outputWeightDelta = desired_output - actual_output;
+	    double[] hiddenWeightDelta = new double[6]; //6 hidden nodes.
+	   	double MSE = outputWeightDelta * outputWeightDelta;
+	    outputWeightDelta *= actual_output * (1 - actual_output);
+	    	
+	    if (MSE < MAX_MSE) 
+	    {
+	    	System.out.println("MSE < MAX_MSE. return early.");
+	    	return;
+	    }
+	    LinkedList<Neuron> hiddenLayer = getHiddenLayer();
+	    for (Neuron n : hiddenLayer)
+	    {
+	    	double sum = outputWeightDelta * n.getWeight(output);
+	    	hiddenWeightDelta[n.getNumber() - 1] = sum * n.getLastOutput() * (1. - n.getLastOutput());
+	    }
+	    for (Neuron n : hiddenLayer)
+	    {
+	    	System.out.println("adjustNN: loop x: changing " + (LRATE * outputWeightDelta * n.getLastOutput()));
+	    	n.setWeight(output, n.getWeight(output) + (LRATE * outputWeightDelta * n.getLastOutput()));
+	    	for (Neuron i : getInputLayer())
+	    	{
+	    		System.out.println("adjustNN: loop y: changing " + (LRATE * hiddenWeightDelta[n.getNumber() - 1] * i.getLastOutput()));
+	    		i.setWeight(n, i.getWeight(n) + (LRATE * hiddenWeightDelta[n.getNumber() - 1] * i.getLastOutput()));
+	    	}
+	    }
+	    	
+	 }
+	
+	private LinkedList<Neuron> getInputLayer()
 	{
-		for (Perceptron p : a) p.evaluate();
+			LinkedList<Neuron> ret = new LinkedList<Neuron>();
+			ret.add(a1); ret.add(a2); ret.add(a3);
+			ret.add(a4); ret.add(a5); ret.add(a6);
+			return ret;
+	}
+	
+	private LinkedList<Neuron> getHiddenLayer()
+	{
+		LinkedList<Neuron> ret = new LinkedList<Neuron>();
+		ret.add(b1); ret.add(b2); ret.add(b3);
+		ret.add(b4); ret.add(b5); ret.add(b6);
+		return ret;
+	}
+	
+	private void evaluate(Neuron ... a)
+	{
+		for (Neuron p : a) p.evaluate();
 	}
 	
 	//makes all curVals 0
