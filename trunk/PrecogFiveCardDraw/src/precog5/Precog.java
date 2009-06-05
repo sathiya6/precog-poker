@@ -809,32 +809,31 @@ public class Precog implements Player
     }
     
 	@Override
-	public void deal(Card[] cards) {
-		// TODO Auto-generated method stub
-		
+	public void deal(Card[] cards)
+	{
 	}
 
 	@Override
-	public Card[] draw(PlayerStats[] stats) {
-		// TODO Auto-generated method stub
+	public Card[] draw(PlayerStats[] stats)
+	{
 		return null;
 	}
 
 	@Override
-	public int getBid(PlayerStats[] stats, int callBid) {
-		// TODO Auto-generated method stub
+	public int getBid(PlayerStats[] stats, int callBid) 
+	{
 		return 0;
 	}
 
 	@Override
-	public void initHand(PlayerStats[] stats, int yourIndex) {
-		// TODO Auto-generated method stub
+	public void initHand(PlayerStats[] stats, int yourIndex)
+	{
 		
 	}
 
 	@Override
-	public void outcome(Card[][] allCards, PlayerStats[] stats, int winnerIndex) {
-		// TODO Auto-generated method stub
+	public void outcome(Card[][] allCards, PlayerStats[] stats, int winnerIndex) 
+	{
 		
 	}           
 }

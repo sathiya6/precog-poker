@@ -48,7 +48,7 @@ public class Main {
 		Hand best_discards = new Hand(Precog.convert_long_to_card_array(best_discard));
 		
 		System.out.println("Best Discards: " + best_discards);
-		System.out.println(time);
+		System.out.println("time: " + time);
 		
 		time = System.currentTimeMillis();
 		best_discard = Precog.find_best_discard_option_2_threads(cards_long);
@@ -56,8 +56,8 @@ public class Main {
 		
 		best_discards = new Hand(Precog.convert_long_to_card_array(best_discard));
 		
-		System.out.println("Best Discards: " + best_discards);
-		System.out.println(time);
+		System.out.println("Best Discards(multithreaded): " + best_discards);
+		System.out.println("time: " + time);
 		
 	}
 
