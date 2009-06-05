@@ -40,13 +40,25 @@ public class Main {
 		System.out.println("percentile(multithreaded): " + percentile);
 		System.out.println("time: " + time);
 		
-		/*
+		
 		time = System.currentTimeMillis();
-		Hand best_discards = new Hand(p.convert_long_to_card_array(p.find_best_discard_option(p.convert_card_array_to_long(cards))));
+		long best_discard = Precog.find_best_discard_option(cards_long);
 		time = System.currentTimeMillis() - time;
+		
+		Hand best_discards = new Hand(Precog.convert_long_to_card_array(best_discard));
+		
 		System.out.println("Best Discards: " + best_discards);
 		System.out.println(time);
-		*/
+		
+		time = System.currentTimeMillis();
+		best_discard = Precog.find_best_discard_option_2_threads(cards_long);
+		time = System.currentTimeMillis() - time;
+		
+		best_discards = new Hand(Precog.convert_long_to_card_array(best_discard));
+		
+		System.out.println("Best Discards: " + best_discards);
+		System.out.println(time);
+		
 	}
 
 }

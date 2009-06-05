@@ -406,7 +406,7 @@ public class Precog implements Player
 		return ret;
 	}
 	
-	private static double chance_of_getting_better_hand(long current_hand, long discard, int number_of_discards)
+	static double chance_of_getting_better_hand(long current_hand, long discard, int number_of_discards)
 	{
 		long[] pos_returns = enumerate_discard_returns(current_hand, number_of_discards);
 		long incomplete_hand = current_hand ^ discard;
@@ -418,16 +418,16 @@ public class Precog implements Player
 		
 		for (long pos_return : pos_returns)
 		{
-			total++;
+			total++;			
 			int rating = rate(incomplete_hand | pos_return);
 			if (rating < myRating)
 			{
 				better_hands++;
-			}
+			}						
 		}
 				
 		return (double)better_hands / total;
-	}
+	}	
 	
 	public static long find_best_discard_option(long hand)
 	{
@@ -448,7 +448,90 @@ public class Precog implements Player
 				}
 			}
 		}
-		System.out.println("Chance for Better Hand: " + best_chance);
+		//System.out.println("Chance for Better Hand: " + best_chance);
+		
+		return best_discard;
+	}
+	
+	/**
+	 * There are 4 types of discards: discard 1, discard 2, discard 3, and discard 4.
+	 * We don't explore discard 5 because it's akin to giving up and will only be used in
+	 * the most dire situations.
+	 * 
+	 * For each discard type, there are _combinations of possible discards 
+	 * * combinations of possible returns_ 
+	 * = # of nodes to explore.
+	 * 
+	 * Discard 1: 5 combinations of possible discards * (47 choose 1) possible returns = 235 nodes
+	 * Discard 2: 10810 nodes
+	 * Discard 3: 162150 nodes
+	 * Sum of Discard 1, 2, and 3 = 173195 nodes
+	 * Discard 4: 178365 * 5 nodes
+	 * 
+	 * Since sum of 1 through 3 is approximately equivalent to one branch of 4, we can divide 
+	 * discard 1-3 + 2 branches of discard 4 into one thread, and the other 3 branches
+	 * of discard 4 into the second thread.
+	 * 
+	 * @param hand
+	 * @return
+	 */
+	public static long find_best_discard_option_2_threads(long hand)
+	{
+		// first we enumerate all possible discard-4's (there are 5 combinations)
+		long[] pos_discards_4 = enumerate_discards(4, hand);
+		
+		// now, we pass this array to the Best_Discard_Option_Finder thread, which will
+		// search through the first three branches of the array.
+		Best_Discard_Option_Finder finder = new Best_Discard_Option_Finder(pos_discards_4, hand);
+		Thread thread = new Thread(finder);
+		thread.start();
+		
+		// while we're waiting, we can calculate the other 2 branches as well as discards 1 - 3.
+		double best_chance = 0;
+		long best_discard = 0;
+		
+		// first start with the last 2 branches of discard-4's
+		for (int i = 3; i < 5; i++)
+		{
+			double chance = chance_of_getting_better_hand(hand, pos_discards_4[i], 4);
+			if (chance > best_chance)
+			{
+				best_chance = chance;
+				best_discard = pos_discards_4[i];
+			}
+		}
+		
+		// now calculate discards 1 - 3
+		for (int num_discards = 1; num_discards < 4; num_discards++)
+		{
+			long[] pos_discards = enumerate_discards(num_discards, hand);
+			
+			for (long pos_discard : pos_discards)
+			{
+				double chance = chance_of_getting_better_hand(hand, pos_discard, num_discards);
+				if (chance > best_chance)
+				{
+					best_chance = chance;
+					best_discard = pos_discard;
+				}
+			}
+		}
+		
+		// now we get our results from the other thread
+		try
+		{
+			thread.join();
+			double finder_best_chance = finder.get_best_chance();
+			if (finder_best_chance > best_chance)
+			{
+				best_chance = finder_best_chance;
+				best_discard = finder.get_best_discard();
+			}
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
 		
 		return best_discard;
 	}
