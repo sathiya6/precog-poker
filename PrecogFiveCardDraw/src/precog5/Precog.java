@@ -816,6 +816,7 @@ public class Precog implements Player
 	@Override
 	public Card[] draw(PlayerStats[] stats)
 	{
+		
 		return null;
 	}
 
