@@ -175,7 +175,7 @@ public class Precog implements Player
 	public static double percentile_before_trade(long hand)
 	{
 		// first, we enumerate possible opponent hands		
-		long[] pos_opp_hands = enumerate_possible_opponent_hands_before_trade(hand);		
+		long[] pos_opp_hands = enum_pos_opp_hands_before_trade(hand);		
 		int myRating = rate(hand);		
 		int notBigger = 0;
 		
@@ -190,9 +190,10 @@ public class Precog implements Player
 		return (double)notBigger / 1533939;
 	}
 	
+	
 	public static double percentile_before_trade_multithread(long hand, int num_processes)
 	{
-		long[] pos_opp_hands = enumerate_possible_opponent_hands_before_trade(hand);
+		long[] pos_opp_hands = enum_pos_opp_hands_before_trade_2_threads(hand);
 		int myRating = rate(hand);
 		Thread[] threads = new Thread[num_processes];
 		Perc_Before_Trade_Calculator[] pbtcs = new Perc_Before_Trade_Calculator[num_processes];
@@ -232,7 +233,7 @@ public class Precog implements Player
 		return (double) not_bigger / 1533939;
 	}
 	
-	public static long[] enumerate_possible_opponent_hands_before_trade(long taken)
+	public static long[] enum_pos_opp_hands_before_trade(long taken)
 	{
 		// 47 choose 5 = 1533939
 		long[] ret = new long[1533939];
@@ -264,6 +265,87 @@ public class Precog implements Player
 			}
 		}
 		return ret;
+	}
+	
+	/**
+	 * 47 choose 5 = 1533939
+	 * 41 choose 5 = 749398
+	 * Therefore, 41 choose 5 is approximately half of 41 choose 5.
+	 * Therefore, we can multithread this by finding the 7th bit, 
+	 * erase the first 6th bits in the process,
+	 * and pass the result into a runnable to find half of the combinations.
+	 * The other half can be found by using the normal enum_pos_opp_hands_before_trade
+	 * until we reach the 7th bit in the outmost for loop   
+	 * 
+	 * @param taken the bits discluded from possible opponent combinations
+	 * @return
+	 */
+	public static long[] enum_pos_opp_hands_before_trade_2_threads(long taken)
+	{
+		// initialize the return array
+		long[] pos_opp_hands = new long[1533939];
+		// first we find the pool of possible cards that could be our opponents 
+		long pool = 0xFFFFFFFFFFFFFL ^ taken;
+		
+		// now, we erase the first 6 bits of the pool
+		long pool_clone = pool;
+		for (int i = 0; i < 6; i++)
+		{
+			// this operation erases the right-most bit of pool_clone 
+			pool_clone &= (pool_clone - 1);
+		}
+				
+		// now, we pass the pool_clone to a separate thread to calculate
+		// meanwhile, we'll pass our return array to the thread to populate
+		// WARNING: this could be potentially disastrous, since both threads are
+		// accessing the same array at the same time, but our algorithm should
+		// have 0 collisions, since the 2 threads are working on separate halves. 
+		// This way, we can avoid the extra System.arraycopy()
+		Enum_Pos_Opp_Hands_7th_Bit calc_41bit = new Enum_Pos_Opp_Hands_7th_Bit(pool_clone, pos_opp_hands);
+		Thread thread = new Thread(calc_41bit);
+		thread.start();
+		
+		// while we're waiting, let's calculate the other half				
+		int index = 0;
+		long c1, c2, c3, c4, c5, p1, p2, p3, p4, p5;
+		c1 = pool;
+		
+		// our outermost loop should go up till the 7th bit, which has an index of 6
+		for (int i = 0; i < 6; i++)
+		{
+			c2 = c1 ^= p1 = c1 & -c1;
+			for (int j = i + 1; j < 44; j++)
+			{
+				c3 = c2 ^= p2 = c2 & -c2;
+				for (int k = j + 1; k < 45; k++)
+				{
+					c4 = c3 ^= p3 = c3 & -c3;
+					for (int l = k + 1; l < 46; l++)
+					{
+						c5 = c4 ^= p4 = c4 & -c4;
+						for (int m = l + 1; m < 47; m++)
+						{
+							c5 ^= p5 = c5 & -c5;
+							pos_opp_hands[index++] = p1 | p2 | p3 | p4 | p5;
+						}
+					}
+				}
+			}
+		}
+				
+		// now that we're done, let's wait for the other thread to finish
+		try
+		{
+			thread.join();			
+		}
+		catch(Exception e)
+		{
+			// Hopefully we won't get to this point
+			e.printStackTrace();
+		}
+		
+		// Yay, we're done!
+		return pos_opp_hands;
 	}
 	
 	private static long[] enumerate_discards(int number_of_discards, long hand)
