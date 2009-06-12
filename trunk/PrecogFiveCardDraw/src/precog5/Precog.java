@@ -267,6 +267,142 @@ public class Precog implements Player
 		return ret;
 	}
 	
+	public static long[] enum_pos_opp_hands_1_traded(long taken)
+	{
+		// taken = 6 cards
+		// 46 choose 5 = 1370754
+		long[] ret = new long[1370754];
+		int index = 0;
+		long c1, c2, c3, c4, c5, p1, p2, p3, p4, p5;
+		
+		c1 = 0xFFFFFFFFFFFFFL ^ taken;
+		
+		for (int i = 0; i < 42; i++)
+		{
+			c2 = c1 ^= p1 = c1 & -c1;
+			for (int j = i + 1; j < 43; j++)
+			{
+				c3 = c2 ^= p2 = c2 & -c2;
+				for (int k = j + 1; k < 44; k++)
+				{
+					c4 = c3 ^= p3 = c3 & -c3;
+					for (int l = k + 1; l < 45; l++)
+					{
+						c5 = c4 ^= p4 = c4 & -c4;
+						for (int m = l + 1; m < 46; m++)
+						{
+							c5 ^= p5 = c5 & -c5;
+							ret[index++] = p1 | p2 | p3 | p4 | p5;
+						}
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	
+	public static long[] enum_pos_opp_hands_2_traded(long taken)
+	{
+		// taken = 7 cards
+		// 45 choose 5 = 1221759
+		long[] ret = new long[1221759];
+		int index = 0;
+		long c1, c2, c3, c4, c5, p1, p2, p3, p4, p5;
+		
+		c1 = 0xFFFFFFFFFFFFFL ^ taken;
+		
+		for (int i = 0; i < 41; i++)
+		{
+			c2 = c1 ^= p1 = c1 & -c1;
+			for (int j = i + 1; j < 42; j++)
+			{
+				c3 = c2 ^= p2 = c2 & -c2;
+				for (int k = j + 1; k < 43; k++)
+				{
+					c4 = c3 ^= p3 = c3 & -c3;
+					for (int l = k + 1; l < 44; l++)
+					{
+						c5 = c4 ^= p4 = c4 & -c4;
+						for (int m = l + 1; m < 45; m++)
+						{
+							c5 ^= p5 = c5 & -c5;
+							ret[index++] = p1 | p2 | p3 | p4 | p5;
+						}
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	
+	public static long[] enum_pos_opp_hands_3_traded(long taken)
+	{
+		// taken = 8 cards
+		// 44 choose 5 = 1086008
+		long[] ret = new long[1086008];
+		int index = 0;
+		long c1, c2, c3, c4, c5, p1, p2, p3, p4, p5;
+		
+		c1 = 0xFFFFFFFFFFFFFL ^ taken;
+		
+		for (int i = 0; i < 40; i++)
+		{
+			c2 = c1 ^= p1 = c1 & -c1;
+			for (int j = i + 1; j < 41; j++)
+			{
+				c3 = c2 ^= p2 = c2 & -c2;
+				for (int k = j + 1; k < 42; k++)
+				{
+					c4 = c3 ^= p3 = c3 & -c3;
+					for (int l = k + 1; l < 43; l++)
+					{
+						c5 = c4 ^= p4 = c4 & -c4;
+						for (int m = l + 1; m < 44; m++)
+						{
+							c5 ^= p5 = c5 & -c5;
+							ret[index++] = p1 | p2 | p3 | p4 | p5;
+						}
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	
+	public static long[] enum_pos_opp_hands_4_traded(long taken)
+	{
+		// taken = 9 cards
+		// 43 choose 5 = 962598
+		long[] ret = new long[962598];
+		int index = 0;
+		long c1, c2, c3, c4, c5, p1, p2, p3, p4, p5;
+		
+		c1 = 0xFFFFFFFFFFFFFL ^ taken;
+		
+		for (int i = 0; i < 39; i++)
+		{
+			c2 = c1 ^= p1 = c1 & -c1;
+			for (int j = i + 1; j < 40; j++)
+			{
+				c3 = c2 ^= p2 = c2 & -c2;
+				for (int k = j + 1; k < 41; k++)
+				{
+					c4 = c3 ^= p3 = c3 & -c3;
+					for (int l = k + 1; l < 42; l++)
+					{
+						c5 = c4 ^= p4 = c4 & -c4;
+						for (int m = l + 1; m < 43; m++)
+						{
+							c5 ^= p5 = c5 & -c5;
+							ret[index++] = p1 | p2 | p3 | p4 | p5;
+						}
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	
 	/**
 	 * 47 choose 5 = 1533939
 	 * 41 choose 5 = 749398
@@ -301,7 +437,7 @@ public class Precog implements Player
 		// accessing the same array at the same time, but our algorithm should
 		// have 0 collisions, since the 2 threads are working on separate halves. 
 		// This way, we can avoid the extra System.arraycopy()
-		Enum_Pos_Opp_Hands_7th_Bit calc_41bit = new Enum_Pos_Opp_Hands_7th_Bit(pool_clone, pos_opp_hands);
+		Enum_Pos_Opp_Hands_47_41 calc_41bit = new Enum_Pos_Opp_Hands_47_41(pool_clone, pos_opp_hands);
 		Thread thread = new Thread(calc_41bit);
 		thread.start();
 		
@@ -347,7 +483,243 @@ public class Precog implements Player
 		// Yay, we're done!
 		return pos_opp_hands;
 	}
+		
+	public static long[] enum_pos_opp_hands_1_traded_2_threads(long taken)
+	{
+		long[] pos_opp_hands = new long[1370754];
+		long pool = 0xFFFFFFFFFFFFFL ^ taken;
+		// now, we erase the first 6 bits of the pool
+		long pool_clone = pool;
+		for (int i = 0; i < 6; i++)
+		{
+			// this operation erases the right-most bit of pool_clone 
+			pool_clone &= (pool_clone - 1);
+		}
+		
+		Enum_Pos_Opp_Hands_46_40 calc_40bit = new Enum_Pos_Opp_Hands_46_40(pool_clone, pos_opp_hands);
+		Thread thread = new Thread(calc_40bit);
+		thread.start();
+		
+		// while we're waiting, let's calculate the other half				
+		int index = 0;
+		long c1, c2, c3, c4, c5, p1, p2, p3, p4, p5;
+		c1 = pool;
+		
+		// our outermost loop should go up till the 7th bit, which has an index of 6
+		for (int i = 0; i < 6; i++)
+		{
+			c2 = c1 ^= p1 = c1 & -c1;
+			for (int j = i + 1; j < 43; j++)
+			{
+				c3 = c2 ^= p2 = c2 & -c2;
+				for (int k = j + 1; k < 44; k++)
+				{
+					c4 = c3 ^= p3 = c3 & -c3;
+					for (int l = k + 1; l < 45; l++)
+					{
+						c5 = c4 ^= p4 = c4 & -c4;
+						for (int m = l + 1; m < 46; m++)
+						{
+							c5 ^= p5 = c5 & -c5;
+							pos_opp_hands[index++] = p1 | p2 | p3 | p4 | p5;
+						}
+					}
+				}
+			}
+		}
+				
+		// now that we're done, let's wait for the other thread to finish
+		try
+		{
+			thread.join();			
+		}
+		catch(Exception e)
+		{
+			// Hopefully we won't get to this point
+			e.printStackTrace();
+		}
+		
+		// Yay, we're done!
+		return pos_opp_hands;
+	}
 	
+	public static long[] enum_pos_opp_hands_2_traded_2_threads(long taken)
+	{
+		long[] pos_opp_hands = new long[1221759];
+		long pool = 0xFFFFFFFFFFFFFL ^ taken;
+		// now, we erase the first 6 bits of the pool
+		long pool_clone = pool;
+		for (int i = 0; i < 6; i++)
+		{
+			// this operation erases the right-most bit of pool_clone 
+			pool_clone &= (pool_clone - 1);
+		}
+		
+		Enum_Pos_Opp_Hands_45_39 calc_39bit = new Enum_Pos_Opp_Hands_45_39(pool_clone, pos_opp_hands);
+		Thread thread = new Thread(calc_39bit);
+		thread.start();
+		
+		// while we're waiting, let's calculate the other half				
+		int index = 0;
+		long c1, c2, c3, c4, c5, p1, p2, p3, p4, p5;
+		c1 = pool;
+		
+		// our outermost loop should go up till the 7th bit, which has an index of 6
+		for (int i = 0; i < 6; i++)
+		{
+			c2 = c1 ^= p1 = c1 & -c1;
+			for (int j = i + 1; j < 42; j++)
+			{
+				c3 = c2 ^= p2 = c2 & -c2;
+				for (int k = j + 1; k < 43; k++)
+				{
+					c4 = c3 ^= p3 = c3 & -c3;
+					for (int l = k + 1; l < 44; l++)
+					{
+						c5 = c4 ^= p4 = c4 & -c4;
+						for (int m = l + 1; m < 45; m++)
+						{
+							c5 ^= p5 = c5 & -c5;
+							pos_opp_hands[index++] = p1 | p2 | p3 | p4 | p5;
+						}
+					}
+				}
+			}
+		}
+				
+		// now that we're done, let's wait for the other thread to finish
+		try
+		{
+			thread.join();			
+		}
+		catch(Exception e)
+		{
+			// Hopefully we won't get to this point
+			e.printStackTrace();
+		}
+		
+		// Yay, we're done!
+		return pos_opp_hands;
+	}
+	
+	public static long[] enum_pos_opp_hands_3_traded_2_threads(long taken)
+	{
+		long[] pos_opp_hands = new long[1086008];
+		long pool = 0xFFFFFFFFFFFFFL ^ taken;
+		// now, we erase the first 5 bits of the pool
+		long pool_clone = pool;
+		for (int i = 0; i < 5; i++)
+		{
+			// this operation erases the right-most bit of pool_clone 
+			pool_clone &= (pool_clone - 1);
+		}
+		
+		Enum_Pos_Opp_Hands_44_39 calc_39bit = new Enum_Pos_Opp_Hands_44_39(pool_clone, pos_opp_hands);
+		Thread thread = new Thread(calc_39bit);
+		thread.start();
+		
+		// while we're waiting, let's calculate the other half				
+		int index = 0;
+		long c1, c2, c3, c4, c5, p1, p2, p3, p4, p5;
+		c1 = pool;
+		
+		// our outermost loop should go up till the 6th bit, which has an index of 5
+		for (int i = 0; i < 5; i++)
+		{
+			c2 = c1 ^= p1 = c1 & -c1;
+			for (int j = i + 1; j < 41; j++)
+			{
+				c3 = c2 ^= p2 = c2 & -c2;
+				for (int k = j + 1; k < 42; k++)
+				{
+					c4 = c3 ^= p3 = c3 & -c3;
+					for (int l = k + 1; l < 43; l++)
+					{
+						c5 = c4 ^= p4 = c4 & -c4;
+						for (int m = l + 1; m < 44; m++)
+						{
+							c5 ^= p5 = c5 & -c5;
+							pos_opp_hands[index++] = p1 | p2 | p3 | p4 | p5;
+						}
+					}
+				}
+			}
+		}
+				
+		// now that we're done, let's wait for the other thread to finish
+		try
+		{
+			thread.join();			
+		}
+		catch(Exception e)
+		{
+			// Hopefully we won't get to this point
+			e.printStackTrace();
+		}
+		
+		// Yay, we're done!
+		return pos_opp_hands;
+	}
+	
+	public static long[] enum_pos_opp_hands_4_traded_2_threads(long taken)
+	{
+		long[] pos_opp_hands = new long[962598];
+		long pool = 0xFFFFFFFFFFFFFL ^ taken;
+		// now, we erase the first 5 bits of the pool
+		long pool_clone = pool;
+		for (int i = 0; i < 5; i++)
+		{
+			// this operation erases the right-most bit of pool_clone 
+			pool_clone &= (pool_clone - 1);
+		}
+		
+		Enum_Pos_Opp_Hands_43_38 calc_38bit = new Enum_Pos_Opp_Hands_43_38(pool_clone, pos_opp_hands);
+		Thread thread = new Thread(calc_38bit);
+		thread.start();
+		
+		// while we're waiting, let's calculate the other half				
+		int index = 0;
+		long c1, c2, c3, c4, c5, p1, p2, p3, p4, p5;
+		c1 = pool;
+		
+		// our outermost loop should go up till the 6th bit, which has an index of 5
+		for (int i = 0; i < 5; i++)
+		{
+			c2 = c1 ^= p1 = c1 & -c1;
+			for (int j = i + 1; j < 40; j++)
+			{
+				c3 = c2 ^= p2 = c2 & -c2;
+				for (int k = j + 1; k < 41; k++)
+				{
+					c4 = c3 ^= p3 = c3 & -c3;
+					for (int l = k + 1; l < 42; l++)
+					{
+						c5 = c4 ^= p4 = c4 & -c4;
+						for (int m = l + 1; m < 43; m++)
+						{
+							c5 ^= p5 = c5 & -c5;
+							pos_opp_hands[index++] = p1 | p2 | p3 | p4 | p5;
+						}
+					}
+				}
+			}
+		}
+				
+		// now that we're done, let's wait for the other thread to finish
+		try
+		{
+			thread.join();			
+		}
+		catch(Exception e)
+		{
+			// Hopefully we won't get to this point
+			e.printStackTrace();
+		}
+		
+		// Yay, we're done!
+		return pos_opp_hands;
+	}
+		
 	private static long[] enumerate_discards(int number_of_discards, long hand)
 	{
 		long[] ret;
