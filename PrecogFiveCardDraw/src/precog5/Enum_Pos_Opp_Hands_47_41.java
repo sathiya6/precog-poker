@@ -1,6 +1,6 @@
 package precog5;
 
-public class Enum_Pos_Opp_Hands_7th_Bit implements Runnable 
+public class Enum_Pos_Opp_Hands_47_41 implements Runnable 
 {
 	private long pool;
 	private long[] pos_opp_hands;
@@ -10,7 +10,7 @@ public class Enum_Pos_Opp_Hands_7th_Bit implements Runnable
 	 * 
 	 * @param pool a 41-bit long that contains possible opponent cards
 	 */
-	Enum_Pos_Opp_Hands_7th_Bit(long pool, long[] pos_opp_hands)
+	Enum_Pos_Opp_Hands_47_41(long pool, long[] pos_opp_hands)
 	{
 		this.pool = pool;
 		// 41 choose 5 = 749398;

@@ -25,7 +25,7 @@ public class Main {
 		System.out.println(hand);
 		
 		long cards_long = Precog.convert_card_array_to_long(cards);
-		
+		/*
 		long time = System.currentTimeMillis();
 		double percentile = Precog.percentile_before_trade(cards_long);
 		time = System.currentTimeMillis() - time;
@@ -58,7 +58,26 @@ public class Main {
 		
 		System.out.println("Best Discards(multithreaded): " + best_discards);
 		System.out.println("time: " + time);
+		*/
+		Card[] traded = new Card[4];
+		traded[0] = deck.dealOne();
+		traded[1] = deck.dealOne();
+		traded[2] = deck.dealOne();
+		traded[3] = deck.dealOne();
 		
+		long traded_long = Precog.convert_card_array_to_long(traded);
+		
+		long time = System.currentTimeMillis();
+		Precog.enum_pos_opp_hands_4_traded(cards_long | traded_long);
+		time = System.currentTimeMillis() - time;
+		
+		System.out.println("Time: " + time);
+		
+		time = System.currentTimeMillis();
+		Precog.enum_pos_opp_hands_4_traded_2_threads(cards_long | traded_long);
+		time = System.currentTimeMillis() - time;
+		
+		System.out.println("Time (multi): " + time);
 	}
 
 }
