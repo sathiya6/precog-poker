@@ -1,6 +1,6 @@
 package precog5;
 
-public class Perc_Before_Trade_Calculator implements Runnable 
+public class Percentile_Calculator implements Runnable 
 {
 	// Data needed for calculations
 	private long[] pos_opp_hands;
@@ -11,7 +11,7 @@ public class Perc_Before_Trade_Calculator implements Runnable
 	private int not_bigger;
 	
 	
-	public Perc_Before_Trade_Calculator(long[] pos_opp_hands, int start_idx, int end_idx, int my_rating)
+	public Percentile_Calculator(long[] pos_opp_hands, int start_idx, int end_idx, int my_rating)
 	{
 		this.pos_opp_hands = pos_opp_hands;
 		this.start_idx = start_idx;

@@ -80,7 +80,7 @@ public class Precog implements Player
     //private static short[] values = new short[4888];
     private static short[] hash_values = new short[8192];
     private static short[] hash_adjust = new short[512];
-	
+    
     public Precog()
     {      
     	initialize();         
@@ -190,13 +190,47 @@ public class Precog implements Player
 		return (double)notBigger / 1533939;
 	}
 	
+	public static double percentile_after_trade(long hand, long taken, int num_traded)
+	{
+		long[] pos_opp_hands;
+		switch(num_traded)
+		{
+		case 1:
+			pos_opp_hands = enum_pos_opp_hands_1_traded_2_threads(taken);
+			break;
+		case 2: 
+			pos_opp_hands = enum_pos_opp_hands_2_traded_2_threads(taken);
+			break;
+		case 3:
+			pos_opp_hands = enum_pos_opp_hands_3_traded_2_threads(taken);
+			break;
+		case 4:
+			pos_opp_hands = enum_pos_opp_hands_4_traded_2_threads(taken);
+			break;
+		default:
+			return -1.d;
+		}
+		
+		int myRating = rate(hand);		
+		int notBigger = 0;
+		
+		for (long opp_hand : pos_opp_hands)
+		{
+			if (rate(opp_hand) >= myRating)
+			{
+				notBigger++;
+			}
+		}
+		
+		return (double)notBigger / pos_opp_hands.length;
+	}
 	
 	public static double percentile_before_trade_multithread(long hand, int num_processes)
 	{
 		long[] pos_opp_hands = enum_pos_opp_hands_before_trade_2_threads(hand);
 		int myRating = rate(hand);
 		Thread[] threads = new Thread[num_processes];
-		Perc_Before_Trade_Calculator[] pbtcs = new Perc_Before_Trade_Calculator[num_processes];
+		Percentile_Calculator[] pbtcs = new Percentile_Calculator[num_processes];
 				
 		int chunk = 1533939 / num_processes;
 		chunk--;
@@ -206,12 +240,12 @@ public class Precog implements Player
 		
 		for (int i = 0; i < final_idx; i++)
 		{
-			pbtcs[i] = new Perc_Before_Trade_Calculator(pos_opp_hands, last_idx, temp = (last_idx + chunk), myRating);
+			pbtcs[i] = new Percentile_Calculator(pos_opp_hands, last_idx, temp = (last_idx + chunk), myRating);
 			threads[i] = new Thread(pbtcs[i]);
 			threads[i].start();
 			last_idx = temp + 1;
 		}
-		pbtcs[final_idx] = new Perc_Before_Trade_Calculator(pos_opp_hands, last_idx, 1533938, myRating);		
+		pbtcs[final_idx] = new Percentile_Calculator(pos_opp_hands, last_idx, 1533938, myRating);		
 		threads[final_idx] = new Thread(pbtcs[final_idx]);
 		threads[final_idx].start();
 		
@@ -231,6 +265,66 @@ public class Precog implements Player
 		}
 		
 		return (double) not_bigger / 1533939;
+	}
+	
+	public static double percentile_after_trade_multithreaded(long hand, long taken, int num_traded, int num_processes)
+	{
+		long[] pos_opp_hands;
+		switch(num_traded)
+		{
+		case 1:
+			pos_opp_hands = enum_pos_opp_hands_1_traded_2_threads(taken);
+			break;
+		case 2: 
+			pos_opp_hands = enum_pos_opp_hands_2_traded_2_threads(taken);
+			break;
+		case 3:
+			pos_opp_hands = enum_pos_opp_hands_3_traded_2_threads(taken);
+			break;
+		case 4:
+			pos_opp_hands = enum_pos_opp_hands_4_traded_2_threads(taken);
+			break;
+		default:
+			return -1.d;
+		}
+		
+		int myRating = rate(hand);
+		Thread[] threads = new Thread[num_processes];
+		Percentile_Calculator[] pbtcs = new Percentile_Calculator[num_processes];
+		
+		int chunk = pos_opp_hands.length / num_processes;
+		chunk--;
+		int last_idx = 0;
+		int temp;
+		int final_idx = num_processes - 1;
+		
+		for (int i = 0; i < final_idx; i++)
+		{
+			pbtcs[i] = new Percentile_Calculator(pos_opp_hands, last_idx, temp = (last_idx + chunk), myRating);
+			threads[i] = new Thread(pbtcs[i]);
+			threads[i].start();
+			last_idx = temp + 1;
+		}
+		pbtcs[final_idx] = new Percentile_Calculator(pos_opp_hands, last_idx, pos_opp_hands.length - 1, myRating);		
+		threads[final_idx] = new Thread(pbtcs[final_idx]);
+		threads[final_idx].start();
+		
+		int not_bigger = 0;
+		
+		try
+		{
+			for (int i = 0; i < num_processes; i++)
+			{
+				threads[i].join();
+				not_bigger += pbtcs[i].get_not_bigger();
+			}
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		
+		return (double) not_bigger / pos_opp_hands.length;
 	}
 	
 	public static long[] enum_pos_opp_hands_before_trade(long taken)
@@ -801,9 +895,14 @@ public class Precog implements Player
 		return (double)better_hands / total;
 	}	
 	
+	/**
+	 * the cached best chance of the best discard option
+	 */
+	private static double best_chance;
+	
 	public static long find_best_discard_option(long hand)
 	{
-		double best_chance = -1d;
+		best_chance = -1d;
 		long best_discard = 0;
 		
 		for (int num_discards = 1; num_discards < 5; num_discards++)
@@ -904,6 +1003,8 @@ public class Precog implements Player
 		{
 			e.printStackTrace();
 		}
+		
+		Precog.best_chance = best_chance;
 		
 		return best_discard;
 	}
@@ -1180,28 +1281,155 @@ public class Precog implements Player
 		return 0; // This point should never be reached.
     }
     
+    /*
+     * Members relevant to interface methods are kept here
+     */
+    private static final boolean MULTITHREADED = true;
+    private PlayerStats[] stats;
+    private int myIndex;
+    private double expected_percentile_cutoff;
+    private Card[] initial_hand;
+    private long initial_hand_long;
+    private double initial_percentile;
+    private int dealIndex;
+    private long best_discard_option;
+    private long discarded_cards;
+    private int discarded_cards_num;
+    private Card[] final_hand;
+    private long final_hand_long;
+    private double final_percentile;
+    
+    
+    private static double expected_percentile_cutoff(int numPlayers)
+    {
+    	return 1.d - (1.d / numPlayers);
+    }
+    
 	@Override
 	public void deal(Card[] cards)
 	{
+		dealIndex++;
+		if (dealIndex == 1)
+		{
+			initial_hand = cards;
+			initial_hand_long = convert_card_array_to_long(initial_hand);
+
+			// let's calculate initial chances here
+			if (MULTITHREADED)
+			{
+				initial_percentile = percentile_before_trade_multithread(initial_hand_long, 2);
+			}
+			else
+			{
+				initial_percentile = percentile_before_trade(initial_hand_long);
+			}			
+		}
+		else if (dealIndex == 2)
+		{
+			final_hand = cards;
+			final_hand_long = convert_card_array_to_long(final_hand);
+			
+			if (MULTITHREADED)
+			{
+				if (discarded_cards != 0)
+				{
+					final_percentile = percentile_after_trade_multithreaded(final_hand_long, final_hand_long | discarded_cards, discarded_cards_num, 2);
+				}
+				else
+				{
+					final_percentile = initial_percentile;
+				}
+			}
+			else
+			{
+				if (discarded_cards != 0)
+				{
+					final_percentile = percentile_after_trade(final_hand_long, final_hand_long | discarded_cards, discarded_cards_num);
+				}
+				else
+				{
+					final_percentile = initial_percentile;
+				}
+			}		
+		}
 	}
 
 	@Override
 	public Card[] draw(PlayerStats[] stats)
 	{
 		
+		if (MULTITHREADED)
+		{
+			best_discard_option = find_best_discard_option_2_threads(initial_hand_long);
+		}
+		else
+		{
+			best_discard_option = find_best_discard_option(initial_hand_long);
+		}
+		// if i am poised to win with current hand
+		if (initial_percentile > expected_percentile_cutoff)
+		{
+			// only discard if our chance of getting better hand is > 80%
+			if (best_chance > 0.8d)
+			{
+				discarded_cards = best_discard_option;
+				Card[] discards = convert_long_to_card_array(discarded_cards);
+				discarded_cards_num = discards.length;
+				return discards;
+			}
+		}
+		else
+		{
+			// since i decided to not fold, discard only if our best option is > 50%
+			if (best_chance > 0.5d)
+			{
+				discarded_cards = best_discard_option;
+				Card[] discards = convert_long_to_card_array(discarded_cards);
+				discarded_cards_num = discards.length;
+				return discards;
+			}
+		}
 		return null;
 	}
 
 	@Override
 	public int getBid(PlayerStats[] stats, int callBid) 
 	{
+		if (dealIndex == 1)
+		{
+			if (initial_percentile > expected_percentile_cutoff)
+			{
+				return callBid;
+			}
+			else
+			{
+				// fold
+				return -1;
+			}
+		}
+		else if (dealIndex == 2)
+		{
+			if (final_percentile > expected_percentile_cutoff)
+			{
+				return callBid;
+			}
+			else
+			{
+				return -1;
+			}
+		}
+		
 		return 0;
 	}
 
 	@Override
 	public void initHand(PlayerStats[] stats, int yourIndex)
 	{
-		
+		this.stats = stats;
+		myIndex = yourIndex;
+		dealIndex = 0;
+		expected_percentile_cutoff = expected_percentile_cutoff(stats.length);
+		discarded_cards = 0;
 	}
 
 	@Override
