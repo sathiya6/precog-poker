@@ -95,7 +95,7 @@ public class SimplePoker
     int numPlayersIn;
     int currentBid;
     
-    void addPlayer(Player p, int chips)
+    public void addPlayer(Player p, int chips)
     {
         allPlayers.add(p);
         PlayerData pd = new PlayerData(p, chips);
