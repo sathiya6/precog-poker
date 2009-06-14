@@ -1329,6 +1329,7 @@ public class Precog implements Player
 			final_hand = cards;
 			final_hand_long = convert_card_array_to_long(final_hand);
 			
+			// let's calculate final chances here			
 			if (MULTITHREADED)
 			{
 				if (discarded_cards != 0)
@@ -1397,6 +1398,8 @@ public class Precog implements Player
 	{
 		if (dealIndex == 1)
 		{
+			/* THIS WAS OUR INITIAL STRATEGY
+			 
 			if (initial_percentile > expected_percentile_cutoff)
 			{
 				return callBid;
@@ -1406,6 +1409,15 @@ public class Precog implements Player
 				// fold
 				return -1;
 			}
+			*/
+			
+			if (initial_percentile < expected_percentile_cutoff)
+			{
+				// This means our initial hand is poised to lose.
+				// If the difference in percentile is huge, we should fold
+				// If we have a high chance of improving our hand, we should keep playing
+			}
+			
 		}
 		else if (dealIndex == 2)
 		{
