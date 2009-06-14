@@ -1298,6 +1298,7 @@ public class Precog implements Player
     private Card[] final_hand;
     private long final_hand_long;
     private double final_percentile;
+    private boolean draw;
     
     
     private static double expected_percentile_cutoff(int numPlayers)
@@ -1323,6 +1324,17 @@ public class Precog implements Player
 			{
 				initial_percentile = percentile_before_trade(initial_hand_long);
 			}			
+			
+			// now let's calculate best discard option
+			
+			if (MULTITHREADED)
+			{
+				best_discard_option = find_best_discard_option_2_threads(initial_hand_long);
+			}
+			else
+			{
+				best_discard_option = find_best_discard_option(initial_hand_long);
+			}
 		}
 		else if (dealIndex == 2)
 		{
@@ -1357,42 +1369,19 @@ public class Precog implements Player
 
 	@Override
 	public Card[] draw(PlayerStats[] stats)
-	{
-		
-		if (MULTITHREADED)
+	{		
+		if (draw)
 		{
-			best_discard_option = find_best_discard_option_2_threads(initial_hand_long);
-		}
-		else
-		{
-			best_discard_option = find_best_discard_option(initial_hand_long);
-		}
-		// if i am poised to win with current hand
-		if (initial_percentile > expected_percentile_cutoff)
-		{
-			// only discard if our chance of getting better hand is > 80%
-			if (best_chance > 0.8d)
-			{
-				discarded_cards = best_discard_option;
-				Card[] discards = convert_long_to_card_array(discarded_cards);
-				discarded_cards_num = discards.length;
-				return discards;
-			}
-		}
-		else
-		{
-			// since i decided to not fold, discard only if our best option is > 50%
-			if (best_chance > 0.5d)
-			{
-				discarded_cards = best_discard_option;
-				Card[] discards = convert_long_to_card_array(discarded_cards);
-				discarded_cards_num = discards.length;
-				return discards;
-			}
+			discarded_cards = best_discard_option;
+			Card[] discards = convert_long_to_card_array(discarded_cards);
+			discarded_cards_num = discards.length;
+			return discards;
 		}
 		return null;
 	}
 
+	
+	
 	@Override
 	public int getBid(PlayerStats[] stats, int callBid) 
 	{
@@ -1413,9 +1402,78 @@ public class Precog implements Player
 			
 			if (initial_percentile < expected_percentile_cutoff)
 			{
+				
 				// This means our initial hand is poised to lose.
+				// In this situation, it is too risky to raise. We should either call if we
+				// are confident that we can improve our hand, or fold
 				// If the difference in percentile is huge, we should fold
 				// If we have a high chance of improving our hand, we should keep playing
+				
+				// diffP = difference in percentile, the smaller the better for us
+				// 0 < diffP <= expected_percentile_cutoff
+				double diffP = expected_percentile_cutoff - initial_percentile;
+				
+				// if our chance of improving is > 50%, diffI is positive
+				// The more positive diffI is, the better it is for us
+				// -0.5 <= best_chance <= 0.5
+				double diffI = best_chance - 0.5d;
+				
+				double diffP_weight = 3.0d;
+				double diffI_weight = 1.0d;
+				
+				// The standard: if diffP = 0.1, and diffI = 0.3, we should bet.
+				double eval_call_or_fold = (-diffP * diffP_weight) + (diffI * diffI_weight);
+				
+				if (eval_call_or_fold >= 0)
+				{
+					draw = true;
+					return callBid;
+				}
+				else
+				{
+					return -1;
+				}
+			}
+			else
+			{
+				// our hand is poised to at least break even
+				// In this situation, we should either raise or call
+				
+				// the bigger the diffP, the better for us
+				// 0 <= diffP <= 1.0 - expected_percentile_cutoff
+				double diffP = initial_percentile - expected_percentile_cutoff;
+				
+				// The more positive diffI is, the better it is for us
+				// -0.5 <= diffI <= 0.5
+				double diffI = best_chance - 0.5d;
+				
+				int max_raise_amount = stats[myIndex].chips - callBid;
+				
+				if (diffI > 0.2d)
+				{
+					// we factor in the chance of improving our hand
+					
+					double diffP_weight = 0.9375;
+					double diffI_weight = 0.15625;
+					
+					// the standard: a diffP of 0.2 and a diffI of 0.4 should bet a quarter of our max_raise_amount
+					double eval_raise_percentage = (diffP * diffP_weight) + (diffI * diffI_weight);
+					
+					draw = true;
+					
+					return (int)Math.round(eval_raise_percentage * (max_raise_amount)) + callBid;
+				}
+				else
+				{
+					// we don't consider a potentially better hand
+					double diffP_weight = 1.25d;
+						
+					// the standard: a diffP of 0.2 should bet a quarter of max_raise_amount
+					
+					double eval_raise_percentage = (diffP * diffP_weight);
+					
+					return (int)Math.round(eval_raise_percentage * max_raise_amount) + callBid;
+				}
 			}
 			
 		}
@@ -1427,7 +1485,9 @@ public class Precog implements Player
 			}
 			else
 			{
-				return -1;
+				if (final_percentile < expected_percentile_cutoff - 0.3d)
+					return -1;
+				return callBid;
 			}
 		}
 		
@@ -1442,6 +1502,7 @@ public class Precog implements Player
 		dealIndex = 0;
 		expected_percentile_cutoff = expected_percentile_cutoff(stats.length);
 		discarded_cards = 0;
+		draw = false;
 	}
 
 	@Override
