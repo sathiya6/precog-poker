@@ -4,14 +4,14 @@ import java.util.LinkedList;
 
 public class PlayerStats
 {
-    String name;
-    int chips;
-    int totalBid;
-    int totalWon;
-    boolean folded;
-    boolean allIn;
-    int drew;
-    LinkedList<Integer> bids;
+    public String name;
+    public int chips;
+    public int totalBid;
+    public int totalWon;
+    public boolean folded;
+    public boolean allIn;
+    public int drew;
+    public LinkedList<Integer> bids;
     
     public PlayerStats(int chips)
     {
