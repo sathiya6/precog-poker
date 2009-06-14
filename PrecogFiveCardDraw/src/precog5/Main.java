@@ -16,7 +16,7 @@ public class Main {
 	 */
 	public static void main(String[] args) 
 	{			
-		/*
+		
 		Precog p = new Precog();
 		Deck deck = new Deck();
 		deck.shuffle();
@@ -114,7 +114,8 @@ public class Main {
 		
 		System.out.println("New percentile (multi): " + perc_new);
 		System.out.println("Time: " + time);
-		*/
+		
+		/*
 		SimplePoker table = new FiveCardDraw();
         table.addPlayer(new Randall(), 10);
         table.addPlayer(new OpenBook(), 10);
@@ -133,6 +134,7 @@ public class Main {
             table.endGame();
         else
             System.out.println("Tournament ends without a winner");
+        */
 	}
 
 }
