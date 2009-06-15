@@ -1411,6 +1411,11 @@ public class Precog implements Player
 				
 				// diffP = difference in percentile, the smaller the better for us
 				// 0 < diffP <= expected_percentile_cutoff
+				
+				// if the callBid is 0, meaning no one has bet yet, we check
+				if (callBid == 0)
+					return callBid;
+				
 				double diffP = expected_percentile_cutoff - initial_percentile;
 				
 				// if our chance of improving is > 50%, diffI is positive
@@ -1418,10 +1423,10 @@ public class Precog implements Player
 				// -0.5 <= best_chance <= 0.5
 				double diffI = best_chance - 0.5d;
 				
-				double diffP_weight = 3.0d;
+				double diffP_weight = 6.0d;
 				double diffI_weight = 1.0d;
 				
-				// The standard: if diffP = 0.1, and diffI = 0.3, we should bet.
+				// The standard: if diffP = 0.05, and diffI = 0.3, we should bet.
 				double eval_call_or_fold = (-diffP * diffP_weight) + (diffI * diffI_weight);
 				
 				if (eval_call_or_fold >= 0)
@@ -1449,14 +1454,32 @@ public class Precog implements Player
 				
 				int max_raise_amount = stats[myIndex].chips - callBid;
 				
-				if (diffI > 0.2d)
+				if (diffI > 0.3d)
 				{
 					// we factor in the chance of improving our hand
 					
-					double diffP_weight = 0.9375;
-					double diffI_weight = 0.15625;
+					// the standard: a 70% of max diffP and a diffI of 0.4 should bet an eighth of our max_raise_amount
 					
-					// the standard: a diffP of 0.2 and a diffI of 0.4 should bet a quarter of our max_raise_amount
+					// we set our percentage to raise here. 
+					double raise_percentage = (1.0d / 12);
+					// we set what percent of max diffP we want to achieve raise_percentage here
+					double max_diffP_percentage = 0.99d;
+					// we set the ideal diffI amount to achieve raise_percentage here
+					double ideal_diffI = 0.4d;
+					// we set the importance of diffP versus importance of diffI here
+					// diffP_importance + diffI_importantce = 1
+					double diffP_importance = 9.0d;
+					double diffI_importance = 1.0d;
+					
+					double importance_sum = diffP_importance + diffI_importance;
+					diffP_importance = (diffP_importance) / importance_sum;
+					diffI_importance = (diffI_importance) / importance_sum;
+					
+					// now we calculate our weights based on set parameters above
+					double diffP_weight = (diffP_importance * raise_percentage) / (max_diffP_percentage * (1 - expected_percentile_cutoff));
+					double diffI_weight = (diffI_importance * raise_percentage) / ideal_diffI;
+					
+					
 					double eval_raise_percentage = (diffP * diffP_weight) + (diffI * diffI_weight);
 					
 					draw = true;
@@ -1465,11 +1488,16 @@ public class Precog implements Player
 				}
 				else
 				{
-					// we don't consider a potentially better hand
-					double diffP_weight = 1.25d;
-						
-					// the standard: a diffP of 0.2 should bet a quarter of max_raise_amount
+					// the standard: a diffP of 60% should bet an eighth of max_raise_amount
 					
+					// we set our percentage to raise here. 
+					double raise_percentage = (1.0d / 12);
+					// we set what percent of max diffP we want to achieve raise_percentage here
+					double max_diffP_percentage = 0.99d;
+					
+					// we don't consider a potentially better hand
+					double diffP_weight = (raise_percentage) / (max_diffP_percentage * (1 - expected_percentile_cutoff));
+											
 					double eval_raise_percentage = (diffP * diffP_weight);
 					
 					return (int)Math.round(eval_raise_percentage * max_raise_amount) + callBid;
@@ -1479,6 +1507,10 @@ public class Precog implements Player
 		}
 		else if (dealIndex == 2)
 		{
+			// if no one bets, we check.
+			if (callBid == 0)
+				return callBid;
+			
 			if (final_percentile > expected_percentile_cutoff)
 			{
 				return callBid;
