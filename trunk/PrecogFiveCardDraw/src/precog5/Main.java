@@ -17,28 +17,60 @@ public class Main {
 	public static void main(String[] args) 
 	{			
 		/*
+		double percentile = 0;
+		
 		Precog p = new Precog();
 		Deck deck = new Deck();
-		deck.shuffle();
+		
+		double avg_best_perc = 0;
+		
+		for (int i = 0; i < 10; i++)
+		{			
+			deck.shuffle();
+			
+			double best_perc = -1;
+			
+			Card[][] cards = new Card[4][5];
+			for (int pl = 0; pl < 4; pl++)
+			{
+				for (int j = 0; j < 5; j++)
+				{
+					cards[pl][j] = deck.dealOne();
+				}
+				double perc = Precog.percentile_before_trade(Precog.convert_card_array_to_long(cards[pl]));
+				if (perc > best_perc)
+					best_perc = perc;
+			}
+			avg_best_perc += best_perc;
+		}
+		
+		System.out.println(avg_best_perc / 10);
+		*/
+		/*
+		Precog p = new Precog();
+		
 		Card[] cards = new Card[5];
-		cards[0] = deck.dealOne();
-		cards[1] = deck.dealOne();
-		cards[2] = deck.dealOne();		
-		cards[3] = deck.dealOne(); 		
-		cards[4] = deck.dealOne();
+		
+		cards[0] = new Card("AS");
+		cards[1] = new Card("4S");
+		cards[2] = new Card("5D");
+		cards[3] = new Card("6C");
+		cards[4] = new Card("9H");
 		
 		Hand hand = new Hand(cards);
 		System.out.println(hand);
 		
+		
 		long cards_long = Precog.convert_card_array_to_long(cards);
 		
 		long time = System.currentTimeMillis();
-		double percentile = Precog.percentile_before_trade(cards_long);
+		int percentile = Precog.rate(cards_long);
 		time = System.currentTimeMillis() - time;
 		
 		System.out.println("percentile: " + percentile);
 		System.out.println("time: " + time);		
-		
+		*/
+		/*
 		time = System.currentTimeMillis();		
 		percentile = Precog.percentile_before_trade_multithread(cards_long, 2);
 		time = System.currentTimeMillis() - time;
@@ -117,9 +149,9 @@ public class Main {
 		*/
 		
 		SimplePoker table = new FiveCardDraw();
-        table.addPlayer(new Randall(), 10);
-        table.addPlayer(new OpenBook(), 10);
-        table.addPlayer(new Precog(), 10);
+        //table.addPlayer(new Randall(), 10);
+        table.addPlayer(new OpenBook(), 20);
+        table.addPlayer(new Precog(), 20);
         
         int GAMES = 500;
         

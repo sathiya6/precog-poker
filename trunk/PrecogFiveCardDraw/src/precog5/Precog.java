@@ -1284,7 +1284,7 @@ public class Precog implements Player
     /*
      * Members relevant to interface methods are kept here
      */
-    private static final boolean MULTITHREADED = true;
+    private static final boolean MULTITHREADED = false;
     private PlayerStats[] stats;
     private int myIndex;
     private double expected_percentile_cutoff;
@@ -1380,10 +1380,161 @@ public class Precog implements Player
 		return null;
 	}
 
+	static double ideal_diffP_percentage = 1.0d;
+	// we set the ideal diffI amount to achieve raise_percentage here
+	static double ideal_diffI = 0.4d;
+	// we set the importance of diffP versus importance of diffI here
+	// diffP_importance + diffI_importantce = 1
+	static double diffP_importance = 19.0d;
+	static double diffI_importance = 1.0d;
 	
+	static double importance_sum = diffP_importance + diffI_importance;
+	
+	static double diffI_weight = (diffI_importance) / ideal_diffI;
+	
+	static
+	{				
+		diffP_importance = (diffP_importance) / importance_sum;
+		diffI_importance = (diffI_importance) / importance_sum;		
+	}
 	
 	@Override
 	public int getBid(PlayerStats[] stats, int callBid) 
+	{
+		if (dealIndex == 1)
+		{						
+			if (initial_percentile < expected_percentile_cutoff)
+			{
+				
+				// This means our initial hand is poised to lose.
+				// In this situation, it is too risky to raise. We should either call if we
+				// are confident that we can improve our hand, or fold
+				// If the difference in percentile is huge, we should fold
+				// If we have a high chance of improving our hand, we should keep playing
+				
+				// diffP = difference in percentile, the smaller the better for us
+				// 0 < diffP <= expected_percentile_cutoff
+				
+				// if the callBid is 0, meaning no one has bet yet, we check
+				if (callBid == 0)
+					return callBid;
+				
+				double diffP = expected_percentile_cutoff - initial_percentile;
+				
+				// if our chance of improving is > 50%, diffI is positive
+				// The more positive diffI is, the better it is for us
+				// -0.5 <= best_chance <= 0.5
+				double diffI = best_chance - 0.5d;
+				
+				double diffP_weight = 6.0d;
+				double diffI_weight = 1.0d;
+				
+				// The standard: if diffP = 0.05, and diffI = 0.3, we should bet.
+				double eval_call_or_fold = (-diffP * diffP_weight) + (diffI * diffI_weight);
+				
+				if (eval_call_or_fold >= 0)
+				{
+					// we only bet if it's not too risky
+					int call_bid_threshold = 1;
+					if (callBid <= call_bid_threshold)
+					{
+						draw = true;
+						return callBid;
+					}
+					else
+					{
+						return -1;
+					}
+				}
+				else
+				{
+					return -1;
+				}
+			}
+			else
+			{
+				// our hand is poised to at least break even
+				// In this situation, we should either raise or call
+				
+				// the bigger the diffP, the better for us
+				// 0 <= diffP <= 1.0 - expected_percentile_cutoff
+				double diffP = initial_percentile - expected_percentile_cutoff;
+				
+				// The more positive diffI is, the better it is for us
+				// -0.5 <= diffI <= 0.5
+				double diffI = best_chance - 0.5d;
+				
+				int max_investment = 4;
+				
+				if (diffI > 0.3d)
+				{
+					// now we calculate our weight based on set parameters
+					double diffP_weight = (diffP_importance) / (ideal_diffP_percentage * (1 - expected_percentile_cutoff));
+															
+					double investment_percentage = (diffP * diffP_weight) + (diffI * diffI_weight);
+					int investment = (int) Math.round(investment_percentage * max_investment);
+					
+					// investment is for the entire game, so we must first consider how much we've already put in
+					investment -= stats[myIndex].totalBid;
+					if (investment >= callBid)
+					{
+						// we should raise. 
+						draw = true;
+						return investment;
+					}
+					else
+					{
+						// we fold. we NEVER violate our own threshold
+						return -1;
+					}
+				}
+				else
+				{										
+					// we don't consider a potentially better hand
+					double diffP_weight = (1.0d) / (ideal_diffP_percentage * (1 - expected_percentile_cutoff));
+											
+					double investment_percentage = (diffP * diffP_weight);
+					int investment = (int) Math.round(investment_percentage * max_investment);
+					
+					// investment is for the entire game, so we must first consider how much we've already put in
+					investment -= stats[myIndex].totalBid;
+					if (investment >= callBid)
+					{
+						// we should raise. 						
+						return investment;
+					}
+					else
+					{
+						// we fold. we NEVER violate our own threshold
+						return -1;
+					}
+				}
+			}
+			
+		}
+		else if (dealIndex == 2)
+		{
+			// if no one bets, we check.
+			if (callBid == 0)
+				return callBid;
+			
+			if (final_percentile > expected_percentile_cutoff)
+			{
+				return callBid;
+			}
+			else
+			{
+				if (final_percentile < expected_percentile_cutoff)
+					return -1;
+				return callBid;
+			}
+		}
+		
+		return 0;
+	}
+	
+	//@Override
+	public int getBid_old(PlayerStats[] stats, int callBid) 
 	{
 		if (dealIndex == 1)
 		{
@@ -1452,7 +1603,7 @@ public class Precog implements Player
 				// -0.5 <= diffI <= 0.5
 				double diffI = best_chance - 0.5d;
 				
-				int max_raise_amount = stats[myIndex].chips - callBid;
+				int max_raise_amount = 3;
 				
 				if (diffI > 0.3d)
 				{
@@ -1461,7 +1612,7 @@ public class Precog implements Player
 					// the standard: a 70% of max diffP and a diffI of 0.4 should bet an eighth of our max_raise_amount
 					
 					// we set our percentage to raise here. 
-					double raise_percentage = (1.0d / 12);
+					double raise_percentage = (1.0d / 2);
 					// we set what percent of max diffP we want to achieve raise_percentage here
 					double max_diffP_percentage = 0.99d;
 					// we set the ideal diffI amount to achieve raise_percentage here
