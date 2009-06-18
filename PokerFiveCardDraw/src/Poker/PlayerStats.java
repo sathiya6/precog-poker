@@ -32,6 +32,16 @@ public class PlayerStats
         bids.addAll(ps.bids);
         this.name = ps.toString(); 
     }
+    
+    public void sweep()
+    {
+    	// Reset everything except the chip count and name
+        totalBid = 0;
+        totalWon = 0;
+        folded = allIn = false;
+        drew = -1;  // draw hasn't happened yet
+        bids = new LinkedList<Integer>();
+    }
 
     public String toString()
     {

@@ -3,6 +3,7 @@ package Poker;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Random;
 
 public class SimplePoker
 {
@@ -60,13 +61,6 @@ public class SimplePoker
             chips += c;
         }
         
-        void sweep()
-        {
-            totalBid = 0;
-            totalBid = 0;
-            folded = allIn = false;
-        }
-
         @Override
         public int compareTo(PlayerData ps)
         {
@@ -107,10 +101,15 @@ public class SimplePoker
         return data.size();
     }
     
-    public void playHand()
+    public int firstBidder()
+    {
+    	return firstBidder;
+    }
+    
+    public void playHand(Random rand)
     {
         beforeHand();
-        dealCards();
+        dealCards(rand);
         bidding();
         resolveWinner();
         removeBankrupt();
@@ -140,16 +139,19 @@ public class SimplePoker
             if (p instanceof HumanPlayer)
                 p.initHand(getPlayerStats(), 0);
         }
-        firstBidder++;
     }
     
-    void dealCards()
+    void dealCards(Random rand)
     {
-        deck.shuffle();
+        if (rand != null)
+        	deck.shuffle(rand);
+        else
+        	deck.reset();
         
         // 5-card stud
-        for (PlayerData pd : data)
+        for (int p = 0; p < data.size(); p++)
         {
+        	PlayerData pd = data.get((p + firstBidder) % data.size());
             Card[] cards = new Card[5];
             for (int i = 0; i < cards.length; i++)
             {
@@ -176,8 +178,13 @@ public class SimplePoker
         }
         currentBidder = firstBidder % data.size();
         while (data.get(currentBidder).folded)
-            currentBidder++;
+            currentBidder = (currentBidder + 1) % data.size();
         numPlayersIn = data.size();
+        for (PlayerData pd : data)
+        {
+        	if (pd.folded)
+        		numPlayersIn--;
+        }
         int consecutiveCalls = 0;
         while (numPlayersIn > 1 && consecutiveCalls < numPlayersIn)
         {
@@ -330,6 +337,8 @@ public class SimplePoker
     
     void removeBankrupt()
     {
+        firstBidder = (firstBidder + 1) % data.size();
+        // TODO: compensate for removed players, so next player stays next
         Iterator<PlayerData> iter = data.iterator();
         while (iter.hasNext())
         {
@@ -346,6 +355,18 @@ public class SimplePoker
             if (str.length() > 0)
                 str += "\n";
             str += pd.player + "\t" + pd.chips;
+        }
+        return str;
+    }
+    
+    protected String dumpHands()
+    {
+    	String str = "";
+        for (PlayerData pd : data)
+        {
+            if (str.length() > 0)
+                str += "\n";
+            str += pd.player + "\t" + pd.hand;
         }
         return str;
     }
