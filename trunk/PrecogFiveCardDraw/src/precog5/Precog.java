@@ -1284,7 +1284,7 @@ public class Precog implements Player
     /*
      * Members relevant to interface methods are kept here
      */
-    private static final boolean MULTITHREADED = false;
+    private static final boolean MULTITHREADED = true;
     private PlayerStats[] stats;
     private int myIndex;
     private double expected_percentile_cutoff;
@@ -1303,12 +1303,17 @@ public class Precog implements Player
     
     private static double expected_percentile_cutoff(int numPlayers)
     {
-    	return 1.d - (1.d / numPlayers);
+    	// This is the minimum cutoff
+    	double minimum_cutoff = 1.d - (1.d / numPlayers);
+    	// we wanna play it safe and raise our cutoff to somewhere inbetween minimum and maximum, let's say
+    	// midpoint
+    	return minimum_cutoff;
+    	//return minimum_cutoff + ((1.d - minimum_cutoff) / 2);
     }
     
 	@Override
 	public void deal(Card[] cards)
-	{
+	{			
 		dealIndex++;
 		if (dealIndex == 1)
 		{
@@ -1380,24 +1385,26 @@ public class Precog implements Player
 		return null;
 	}
 
+	static int max_investment;
+	// we set the ideal diffP amount to achieve max_investment here
 	static double ideal_diffP_percentage = 1.0d;
-	// we set the ideal diffI amount to achieve raise_percentage here
-	static double ideal_diffI = 0.4d;
-	// we set the importance of diffP versus importance of diffI here
-	// diffP_importance + diffI_importantce = 1
+	// we set the ideal diffI amount to achieve max_investment here
+	static double ideal_diffI = 0.5d;
+	
+	// we set the importance of diffP versus importance of diffI here	
 	static double diffP_importance = 19.0d;
-	static double diffI_importance = 1.0d;
-	
-	static double importance_sum = diffP_importance + diffI_importance;
-	
-	static double diffI_weight = (diffI_importance) / ideal_diffI;
-	
+	static double diffI_importance = 1.0d;		
 	static
 	{				
-		diffP_importance = (diffP_importance) / importance_sum;
-		diffI_importance = (diffI_importance) / importance_sum;		
+		// diffP_importance + diffI_importantce = 1
+		double importance_sum = diffP_importance + diffI_importance;
+		diffP_importance /= importance_sum;
+		diffI_importance /= importance_sum;		
 	}
 	
+	static double diffP_weight;
+	static double diffI_weight = (diffI_importance) / ideal_diffI;
+		
 	@Override
 	public int getBid(PlayerStats[] stats, int callBid) 
 	{
@@ -1426,10 +1433,9 @@ public class Precog implements Player
 				// -0.5 <= best_chance <= 0.5
 				double diffI = best_chance - 0.5d;
 				
-				double diffP_weight = 6.0d;
+				double diffP_weight = 2.0d;
 				double diffI_weight = 1.0d;
 				
-				// The standard: if diffP = 0.05, and diffI = 0.3, we should bet.
 				double eval_call_or_fold = (-diffP * diffP_weight) + (diffI * diffI_weight);
 				
 				if (eval_call_or_fold >= 0)
@@ -1464,15 +1470,12 @@ public class Precog implements Player
 				// -0.5 <= diffI <= 0.5
 				double diffI = best_chance - 0.5d;
 				
-				int max_investment = 4;
+				max_investment = 10;
 				
 				if (diffI > 0.3d)
-				{
-					// now we calculate our weight based on set parameters
-					double diffP_weight = (diffP_importance) / (ideal_diffP_percentage * (1 - expected_percentile_cutoff));
-															
+				{					
 					double investment_percentage = (diffP * diffP_weight) + (diffI * diffI_weight);
-					int investment = (int) Math.round(investment_percentage * max_investment);
+					int investment = (int) investment_percentage * max_investment;
 					
 					// investment is for the entire game, so we must first consider how much we've already put in
 					investment -= stats[myIndex].totalBid;
@@ -1485,13 +1488,14 @@ public class Precog implements Player
 					else
 					{
 						// we fold. we NEVER violate our own threshold
-						return -1;
+						//return -1;
+						draw = true;
+						return callBid;
 					}
 				}
 				else
 				{										
 					// we don't consider a potentially better hand
-					double diffP_weight = (1.0d) / (ideal_diffP_percentage * (1 - expected_percentile_cutoff));
 											
 					double investment_percentage = (diffP * diffP_weight);
 					int investment = (int) Math.round(investment_percentage * max_investment);
@@ -1506,7 +1510,8 @@ public class Precog implements Player
 					else
 					{
 						// we fold. we NEVER violate our own threshold
-						return -1;
+						//return -1;
+						return callBid;
 					}
 				}
 			}
@@ -1534,23 +1539,12 @@ public class Precog implements Player
 	}
 	
 	//@Override
+	/*
 	public int getBid_old(PlayerStats[] stats, int callBid) 
 	{
 		if (dealIndex == 1)
 		{
-			/* THIS WAS OUR INITIAL STRATEGY
-			 
-			if (initial_percentile > expected_percentile_cutoff)
-			{
-				return callBid;
-			}
-			else
-			{
-				// fold
-				return -1;
-			}
-			*/
-			
+						
 			if (initial_percentile < expected_percentile_cutoff)
 			{
 				
@@ -1676,7 +1670,8 @@ public class Precog implements Player
 		
 		return 0;
 	}
-
+	*/
+	
 	@Override
 	public void initHand(PlayerStats[] stats, int yourIndex)
 	{
@@ -1684,6 +1679,7 @@ public class Precog implements Player
 		myIndex = yourIndex;
 		dealIndex = 0;
 		expected_percentile_cutoff = expected_percentile_cutoff(stats.length);
+		diffP_weight = (diffP_importance) / (ideal_diffP_percentage * (1 - expected_percentile_cutoff));		
 		discarded_cards = 0;
 		draw = false;
 	}
