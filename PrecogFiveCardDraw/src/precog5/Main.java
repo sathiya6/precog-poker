@@ -1,5 +1,9 @@
 package precog5;
 
+import java.util.Random;
+
+import Poker.Arthorius;
+import Poker.Austin;
 import Poker.Card;
 import Poker.Deck;
 import Poker.FiveCardDraw;
@@ -7,6 +11,7 @@ import Poker.Hand;
 import Poker.HumanPlayer;
 import Poker.OpenBook;
 import Poker.Randall;
+import Poker.Roboticmayhem_Nick;
 import Poker.SimplePoker;
 
 public class Main {
@@ -148,16 +153,19 @@ public class Main {
 		System.out.println("Time: " + time);
 		*/
 		
+		
 		SimplePoker table = new FiveCardDraw();
         //table.addPlayer(new Randall(), 10);
-        table.addPlayer(new OpenBook(), 20);
-        table.addPlayer(new Precog(), 20);
+		table.addPlayer(new Precog(), 20);
+        table.addPlayer(new Arthorius(), 20);
+        table.addPlayer(new Austin(), 20);
+        table.addPlayer(new Roboticmayhem_Nick(), 20);
         
         int GAMES = 500;
         
         for (int i = 0; i < GAMES && table.countPlayers() > 1; i++)
         {
-            table.playHand();
+            table.playHand(new Random());
             System.out.println("\nAfter " + (i+1) + " hands:");
             System.out.println(table);
             System.out.println("");
