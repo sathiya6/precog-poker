@@ -31,9 +31,8 @@ public class Deck
         nextCard = 0;
     }
     
-    public void shuffle()
+    public void shuffle(Random rand)
     {
-        Random rand = new Random();
         for (int i = cards.length - 1; i >= 0; i--)
         {
             int r = rand.nextInt(i + 1);
@@ -55,5 +54,13 @@ public class Deck
     public int countCardsRemaining()
     {
         return cards.length - nextCard;
+    }
+    
+    /**
+     * Play the exact same deck over again
+     */
+    public void reset()
+    {
+    	nextCard = 0;
     }
 }
